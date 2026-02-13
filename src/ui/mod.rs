@@ -1,0 +1,90 @@
+mod cluster_header;
+mod login;
+mod nodes;
+
+use crate::app::{App, InputMode};
+use ratatui::{
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Paragraph},
+    Frame,
+};
+
+pub fn draw(frame: &mut Frame, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Header bar
+            Constraint::Min(0),    // Content
+            Constraint::Length(1), // Status bar
+        ])
+        .split(frame.area());
+
+    // Draw based on input mode
+    match app.input_mode {
+        InputMode::Login => {
+            login::draw_login(frame, app, frame.area());
+        }
+        InputMode::Normal => {
+            draw_header(frame, chunks[0]);
+            nodes::draw_nodes(frame, app, chunks[1]);
+            draw_status_bar(frame, app, chunks[2]);
+        }
+    }
+}
+
+fn draw_header(frame: &mut Frame, area: Rect) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" picotui - Picodata Cluster Monitor ");
+    frame.render_widget(block, area);
+}
+
+fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect) {
+    let mut spans = vec![
+        Span::styled(" ↑↓/jk", Style::default().fg(Color::Yellow)),
+        Span::raw(" Navigate  "),
+        Span::styled("←→/hl", Style::default().fg(Color::Yellow)),
+        Span::raw(" Collapse/Expand  "),
+        Span::styled("Enter", Style::default().fg(Color::Yellow)),
+        Span::raw(" Details  "),
+        Span::styled("r", Style::default().fg(Color::Yellow)),
+        Span::raw(" Refresh  "),
+        Span::styled("q", Style::default().fg(Color::Yellow)),
+        Span::raw(" Quit"),
+    ];
+
+    if let Some(ref error) = app.last_error {
+        spans.push(Span::raw("  │  "));
+        spans.push(Span::styled(
+            format!("Error: {}", error),
+            Style::default().fg(Color::Red),
+        ));
+    }
+
+    let paragraph = Paragraph::new(Line::from(spans))
+        .style(Style::default().bg(Color::DarkGray).fg(Color::White));
+
+    frame.render_widget(paragraph, area);
+}
+
+pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
+}

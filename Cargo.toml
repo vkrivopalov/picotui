@@ -2,8 +2,12 @@
 name = "picotui"
 version = "0.1.0"
 edition = "2021"
+authors = ["Vladimir Krivopalov <argenet@yandex.ru>"]
 description = "Terminal UI for Picodata cluster management"
 license = "BSL-1.0"
+repository = "https://github.com/vkrivopalov/picotui"
+keywords = ["tui", "picodata", "cluster", "terminal"]
+categories = ["command-line-utilities"]
 
 [workspace]
 

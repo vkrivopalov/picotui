@@ -37,8 +37,15 @@ impl PicodataClient {
                 .append(true)
                 .open("picotui.log")
             {
-                let timestamp = chrono::Local::now().format("%H:%M:%S%.3f");
-                let _ = writeln!(file, "[{}] {}", timestamp, message);
+                let elapsed = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default();
+                let secs = elapsed.as_secs() % 86400; // seconds within day
+                let hours = secs / 3600;
+                let mins = (secs % 3600) / 60;
+                let secs = secs % 60;
+                let millis = elapsed.subsec_millis();
+                let _ = writeln!(file, "[{:02}:{:02}:{:02}.{:03}] {}", hours, mins, secs, millis, message);
             }
         }
     }

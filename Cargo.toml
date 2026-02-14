@@ -12,11 +12,11 @@ license = "BSL-1.0"
 ratatui = "0.29"
 crossterm = "0.28"
 
-# Async runtime
-tokio = { version = "1", features = ["full"] }
+# Async runtime (minimal features)
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 
-# HTTP client
-reqwest = { version = "0.12", features = ["json"] }
+# HTTP client (minimal features, rustls instead of native-tls)
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
@@ -24,11 +24,6 @@ serde_json = "1"
 
 # Error handling
 anyhow = "1"
-thiserror = "2"
 
-# CLI arguments
-clap = { version = "4", features = ["derive"] }
-
-# Utilities
-humansize = "2"
-chrono = "0.4"
+# CLI arguments (lightweight alternative to clap)
+pico-args = "0.5"

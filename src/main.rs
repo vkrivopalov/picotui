@@ -3,9 +3,8 @@ mod app;
 mod models;
 mod ui;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use app::{App, InputMode};
-use clap::Parser;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
@@ -15,27 +14,58 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 use std::time::{Duration, Instant};
 
-#[derive(Parser, Debug)]
-#[command(name = "picotui")]
-#[command(about = "Terminal UI for Picodata cluster management")]
-#[command(version)]
 struct Args {
-    /// Picodata HTTP API URL
-    #[arg(short, long, default_value = "http://localhost:8080")]
     url: String,
-
-    /// Auto-refresh interval in seconds (0 to disable)
-    #[arg(short, long, default_value = "5")]
     refresh: u64,
-
-    /// Enable debug mode (log API responses to picotui.log)
-    #[arg(short, long, default_value = "false")]
     debug: bool,
+}
+
+fn parse_args() -> Result<Args> {
+    let mut args = pico_args::Arguments::from_env();
+
+    if args.contains(["-h", "--help"]) {
+        println!(
+            "picotui - Terminal UI for Picodata cluster management
+
+USAGE:
+    picotui [OPTIONS]
+
+OPTIONS:
+    -u, --url <URL>       Picodata HTTP API URL [default: http://localhost:8080]
+    -r, --refresh <SECS>  Auto-refresh interval in seconds, 0 to disable [default: 5]
+    -d, --debug           Enable debug mode (log API responses to picotui.log)
+    -h, --help            Print help
+    -V, --version         Print version"
+        );
+        std::process::exit(0);
+    }
+
+    if args.contains(["-V", "--version"]) {
+        println!("picotui {}", env!("CARGO_PKG_VERSION"));
+        std::process::exit(0);
+    }
+
+    let url: String = args
+        .opt_value_from_str(["-u", "--url"])?
+        .unwrap_or_else(|| "http://localhost:8080".to_string());
+
+    let refresh: u64 = args
+        .opt_value_from_str(["-r", "--refresh"])?
+        .unwrap_or(5);
+
+    let debug = args.contains(["-d", "--debug"]);
+
+    let remaining = args.finish();
+    if !remaining.is_empty() {
+        return Err(anyhow!("Unknown arguments: {:?}", remaining));
+    }
+
+    Ok(Args { url, refresh, debug })
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args = Args::parse();
+    let args = parse_args()?;
 
     // Setup terminal
     enable_raw_mode()?;

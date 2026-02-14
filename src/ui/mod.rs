@@ -3,6 +3,22 @@ mod login;
 mod nodes;
 
 use crate::app::{App, InputMode};
+
+/// Format bytes in human-readable binary units (KiB, MiB, GiB, etc.)
+pub fn format_bytes(bytes: u64) -> String {
+    const UNITS: &[&str] = &["B", "KiB", "MiB", "GiB", "TiB"];
+    if bytes == 0 {
+        return "0 B".to_string();
+    }
+    let mut size = bytes as f64;
+    for unit in UNITS {
+        if size < 1024.0 {
+            return format!("{:.1} {}", size, unit);
+        }
+        size /= 1024.0;
+    }
+    format!("{:.1} PiB", size)
+}
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},

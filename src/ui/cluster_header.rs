@@ -1,5 +1,5 @@
+use super::format_bytes;
 use crate::models::ClusterInfo;
-use humansize::{format_size, BINARY};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -106,8 +106,8 @@ pub fn draw_cluster_header(frame: &mut Frame, info: &ClusterInfo, area: Rect) {
 
     let label = format!(
         "Memory: {} / {} ({:.1}%)",
-        format_size(used, BINARY),
-        format_size(usable, BINARY),
+        format_bytes(used),
+        format_bytes(usable),
         info.capacity_usage
     );
 

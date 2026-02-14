@@ -1,8 +1,7 @@
-use super::centered_rect;
+use super::{centered_rect, format_bytes};
 use super::cluster_header::draw_cluster_header;
 use crate::app::{App, TreeItem};
 use crate::models::{InstanceInfo, StateVariant};
-use humansize::{format_size, BINARY};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -95,8 +94,8 @@ fn format_tier_line(app: &App, tier_idx: usize) -> Line<'static> {
 
     let mem_str = format!(
         "{}/{}",
-        format_size(tier.memory.used, BINARY),
-        format_size(tier.memory.usable, BINARY)
+        format_bytes(tier.memory.used),
+        format_bytes(tier.memory.usable)
     );
 
     Line::from(vec![
@@ -137,8 +136,8 @@ fn format_replicaset_line(app: &App, tier_idx: usize, rs_idx: usize) -> Line<'st
 
     let mem_str = format!(
         "{}/{}",
-        format_size(rs.memory.used, BINARY),
-        format_size(rs.memory.usable, BINARY)
+        format_bytes(rs.memory.used),
+        format_bytes(rs.memory.usable)
     );
 
     Line::from(vec![

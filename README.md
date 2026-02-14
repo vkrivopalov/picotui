@@ -5,7 +5,10 @@ Terminal UI for Picodata cluster management, built with [ratatui](https://ratatu
 ## Features
 
 - **Cluster Overview**: View cluster name, version, memory usage, and instance counts
+- **Multiple View Modes**: Switch between Tiers (tree), Replicasets (flat), and Instances (flat) views
 - **Hierarchical Tree View**: Navigate tiers → replicasets → instances with expand/collapse
+- **Sorting**: Sort instances by name or failure domain, ascending or descending
+- **Filtering**: Filter instances by name, tier, replicaset, address, or failure domain
 - **Instance Details**: View detailed information including addresses, failure domains, and state
 - **JWT Authentication**: Login support when authentication is enabled
 - **Persistent Sessions**: Optional "Remember me" to save login across sessions
@@ -44,9 +47,32 @@ picotui --url http://localhost:8080 --debug
 |-----|--------|
 | `↑` / `k` | Move selection up |
 | `↓` / `j` | Move selection down |
-| `→` / `l` | Expand selected item |
-| `←` / `h` | Collapse selected item |
+| `→` / `l` | Expand selected item (Tiers view) |
+| `←` / `h` | Collapse selected item (Tiers view) |
 | `Enter` | Show instance details |
+
+### View Modes
+| Key | Action |
+|-----|--------|
+| `g` | Cycle through view modes (Tiers → Replicasets → Instances) |
+| `1` | Switch to Tiers view (hierarchical tree) |
+| `2` | Switch to Replicasets view (flat list) |
+| `3` | Switch to Instances view (flat list with sorting/filtering) |
+
+### Sorting (Instances view only)
+| Key | Action |
+|-----|--------|
+| `s` | Cycle sort field (Name → Failure Domain) |
+| `S` | Toggle sort order (ascending ↑ / descending ↓) |
+
+### Filtering (Instances view only)
+| Key | Action |
+|-----|--------|
+| `/` | Start filter mode |
+| *type* | Filter text (while in filter mode) |
+| `Enter` | Apply filter and exit filter mode |
+| `Esc` | Clear filter and exit filter mode |
+| `Backspace` | Delete last character (while in filter mode) |
 
 ### Actions
 | Key | Action |
@@ -55,7 +81,7 @@ picotui --url http://localhost:8080 --debug
 | `X` | Logout and exit (clears saved session) |
 | `q` | Quit |
 | `Ctrl+C` | Quit |
-| `Esc` | Close popup |
+| `Esc` | Close popup / Clear filter |
 
 ### Login Screen
 | Key | Action |
@@ -68,9 +94,9 @@ picotui --url http://localhost:8080 --debug
 
 ## Screenshots
 
+### Tiers View (hierarchical tree)
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  picotui - Picodata Cluster Monitor                                │
+┌─ picotui - Picodata Cluster Monitor ────────────────────────[Tiers]─┐
 ├─────────────────────────────────────────────────────────────────────┤
 │ Cluster: my-cluster │ Version: 25.6.0 │ Picodata: 25.6.0           │
 │ Instances: 6/6 online │ Plugins: none                              │
@@ -84,9 +110,82 @@ picotui --url http://localhost:8080 --debug
 │   └─▶ r2 [Online]  Inst: 3  Mem: 600 MiB/2 GiB (30.0%)             │
 │ ▶ storage  RS: 1  Inst: 3  RF: 3  Buckets: 0  Vote: ✗              │
 ├─────────────────────────────────────────────────────────────────────┤
-│ ↑↓/jk Navigate  ←→/hl Collapse/Expand  Enter Details  r Refresh  X Logout  q Quit │
+│ ↑↓/jk Navigate  ←→/hl Collapse/Expand  Enter Details  g View  ...  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+### Instances View (flat list with sorting/filtering)
+```
+┌─ picotui - Picodata Cluster Monitor ─────────────────────[Instances]┐
+├─────────────────────────────────────────────────────────────────────┤
+│ Cluster: my-cluster │ ...                                          │
+├─ Instances  Filter: "dc1" ──────────────────────── Sort: Name ↑ ───┤
+│ ★ i1 [Online]  RS: r1  10.0.0.1:3301  datacenter:dc1               │
+│   i2 [Online]  RS: r1  10.0.0.2:3301  datacenter:dc1               │
+│   i4 [Online]  RS: r2  10.0.0.4:3301  datacenter:dc1               │
+├─────────────────────────────────────────────────────────────────────┤
+│ ↑↓/jk Navigate  Enter Details  g View  s Sort  S Order  / Filter   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## View Modes
+
+Picotui offers three different ways to view your cluster data, similar to the Picodata web UI:
+
+### Tiers View (default)
+
+Hierarchical tree view showing the full cluster structure:
+- Tiers at the top level (expandable)
+- Replicasets nested under tiers (expandable)
+- Instances nested under replicasets
+
+Use `→`/`l` to expand and `←`/`h` to collapse nodes. The tree shows memory usage, instance counts, replication factor, and bucket counts at each level.
+
+### Replicasets View
+
+Flat list of all replicasets across all tiers. Each row shows:
+- Replicaset name and state (Online/Offline/Expelled)
+- Parent tier name
+- Instance count
+- Memory usage and capacity percentage
+
+### Instances View
+
+Flat list of all instances with sorting and filtering capabilities:
+- Instance name with leader indicator (★)
+- Current state
+- Parent replicaset
+- Binary address
+- Failure domain (if set)
+
+## Sorting
+
+Sorting is available in the **Instances view** only.
+
+| Sort Field | Description |
+|------------|-------------|
+| **Name** | Sort by instance name alphabetically |
+| **Failure Domain** | Sort by failure domain values, then by name |
+
+Press `s` to cycle through sort fields. Press `S` (Shift+s) to toggle between ascending (↑) and descending (↓) order.
+
+The current sort setting is shown in the bottom-right corner of the instances panel.
+
+## Filtering
+
+Filtering is available in the **Instances view** only.
+
+Press `/` to enter filter mode. Type your filter text to narrow down the displayed instances. The filter matches against:
+
+- **Instance name** (e.g., `i3` matches instance "i3")
+- **Tier name** (e.g., `storage` matches all instances in the "storage" tier)
+- **Replicaset name** (e.g., `r1` matches all instances in replicaset "r1")
+- **Binary address** (e.g., `10.0.0.1` matches instances on that IP)
+- **Failure domain values** (e.g., `dc1` matches instances in datacenter "dc1")
+
+All matching is case-insensitive and matches substrings anywhere in the field.
+
+Press `Enter` to apply the filter and continue navigating. Press `Esc` to clear the filter. The active filter is shown in the title bar.
 
 ## API Endpoints Used
 

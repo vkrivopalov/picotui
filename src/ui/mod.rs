@@ -64,6 +64,24 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
 fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     use crate::app::ViewMode;
 
+    // Show different status bar when filtering
+    if app.filter_active {
+        let spans = vec![
+            Span::styled(" Filter: ", Style::default().fg(Color::Cyan)),
+            Span::styled(&app.filter_text, Style::default().fg(Color::White)),
+            Span::styled("█", Style::default().fg(Color::White)),
+            Span::raw("  │  "),
+            Span::styled("Enter", Style::default().fg(Color::Yellow)),
+            Span::raw(" Apply  "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(" Clear  "),
+        ];
+        let paragraph = Paragraph::new(Line::from(spans))
+            .style(Style::default().bg(Color::DarkGray).fg(Color::White));
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
     let mut spans = vec![
         Span::styled(" ↑↓/jk", Style::default().fg(Color::Yellow)),
         Span::raw(" Navigate  "),
@@ -80,12 +98,14 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     spans.push(Span::styled("g", Style::default().fg(Color::Yellow)));
     spans.push(Span::raw(" View  "));
 
-    // Show sort options in Instances view
+    // Show sort and filter options in Instances view
     if app.view_mode == ViewMode::Instances {
         spans.push(Span::styled("s", Style::default().fg(Color::Yellow)));
         spans.push(Span::raw(" Sort  "));
         spans.push(Span::styled("S", Style::default().fg(Color::Yellow)));
         spans.push(Span::raw(" Order  "));
+        spans.push(Span::styled("/", Style::default().fg(Color::Yellow)));
+        spans.push(Span::raw(" Filter  "));
     }
 
     spans.push(Span::styled("r", Style::default().fg(Color::Yellow)));

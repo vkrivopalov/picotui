@@ -240,6 +240,32 @@ fn handle_detail_input(app: &mut App, key: KeyCode) {
 }
 
 fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
+    // Handle filter input mode
+    if app.filter_active {
+        match key {
+            KeyCode::Esc => {
+                // Clear filter and exit filter mode
+                app.filter_text.clear();
+                app.filter_active = false;
+                app.selected_index = 0;
+            }
+            KeyCode::Enter => {
+                // Exit filter mode but keep filter
+                app.filter_active = false;
+            }
+            KeyCode::Backspace => {
+                app.filter_text.pop();
+                app.selected_index = 0;
+            }
+            KeyCode::Char(c) => {
+                app.filter_text.push(c);
+                app.selected_index = 0;
+            }
+            _ => {}
+        }
+        return;
+    }
+
     match key {
         KeyCode::Char('q') => {
             app.running = false;
@@ -274,20 +300,28 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
             }
         }
         KeyCode::Char('g') => {
-            // Cycle view mode
+            // Cycle view mode and clear filter
             app.view_mode = app.view_mode.cycle_next();
+            app.filter_text.clear();
+            app.filter_active = false;
             app.selected_index = 0;
         }
         KeyCode::Char('1') => {
             app.view_mode = ViewMode::Tiers;
+            app.filter_text.clear();
+            app.filter_active = false;
             app.selected_index = 0;
         }
         KeyCode::Char('2') => {
             app.view_mode = ViewMode::Replicasets;
+            app.filter_text.clear();
+            app.filter_active = false;
             app.selected_index = 0;
         }
         KeyCode::Char('3') => {
             app.view_mode = ViewMode::Instances;
+            app.filter_text.clear();
+            app.filter_active = false;
             app.selected_index = 0;
         }
         KeyCode::Char('s') => {
@@ -302,6 +336,12 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
             if app.view_mode == ViewMode::Instances {
                 app.sort_order = app.sort_order.toggle();
                 app.selected_index = 0;
+            }
+        }
+        KeyCode::Char('/') => {
+            // Start filter mode (only in instances view)
+            if app.view_mode == ViewMode::Instances {
+                app.filter_active = true;
             }
         }
         _ => {}

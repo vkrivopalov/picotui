@@ -143,6 +143,10 @@ pub struct App {
     // Sorting (instances view)
     pub sort_field: SortField,
     pub sort_order: SortOrder,
+
+    // Filtering (instances view)
+    pub filter_text: String,
+    pub filter_active: bool,
 }
 
 impl App {
@@ -190,6 +194,8 @@ impl App {
             view_mode: ViewMode::default(),
             sort_field: SortField::default(),
             sort_order: SortOrder::default(),
+            filter_text: String::new(),
+            filter_active: false,
         }
     }
 
@@ -477,8 +483,10 @@ impl App {
         }
     }
 
-    /// Get sorted instances for Instances view
+    /// Get sorted and filtered instances for Instances view
     pub fn get_sorted_instances(&self) -> Vec<(&str, &str, &InstanceInfo)> {
+        let filter_lower = self.filter_text.to_lowercase();
+
         let mut instances: Vec<(&str, &str, &InstanceInfo)> = self
             .tiers
             .iter()
@@ -488,6 +496,19 @@ impl App {
                         .iter()
                         .map(move |inst| (tier.name.as_str(), rs.name.as_str(), inst))
                 })
+            })
+            .filter(|(tier_name, rs_name, inst)| {
+                if filter_lower.is_empty() {
+                    return true;
+                }
+                // Match against instance name, tier, replicaset, address, or failure domain
+                inst.name.to_lowercase().contains(&filter_lower)
+                    || tier_name.to_lowercase().contains(&filter_lower)
+                    || rs_name.to_lowercase().contains(&filter_lower)
+                    || inst.binary_address.to_lowercase().contains(&filter_lower)
+                    || inst.failure_domain.values().any(|v| {
+                        v.to_lowercase().contains(&filter_lower)
+                    })
             })
             .collect();
 

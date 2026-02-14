@@ -175,9 +175,26 @@ fn draw_instances_view(frame: &mut Frame, app: &App, area: Rect) {
         app.sort_order.arrow()
     );
 
+    // Build filter indicator for title
+    let filter_indicator = if !app.filter_text.is_empty() {
+        format!(" Filter: \"{}\" ", app.filter_text)
+    } else if app.filter_active {
+        " Filter: _ ".to_string()
+    } else {
+        String::new()
+    };
+
+    let mut title_spans = vec![Span::raw(" Instances ")];
+    if !filter_indicator.is_empty() {
+        title_spans.push(Span::styled(
+            filter_indicator,
+            Style::default().fg(Color::Yellow),
+        ));
+    }
+
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(" Instances ")
+        .title(Line::from(title_spans))
         .title_bottom(
             Line::from(vec![Span::styled(
                 sort_indicator,
@@ -189,12 +206,17 @@ fn draw_instances_view(frame: &mut Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    // Get sorted instances
+    // Get sorted and filtered instances
     let instances = app.get_sorted_instances();
 
     if instances.is_empty() {
-        let msg = Paragraph::new("No instances found. Press 'r' to refresh.");
-        frame.render_widget(msg, inner);
+        let msg = if !app.filter_text.is_empty() {
+            format!("No instances match filter \"{}\". Press Esc to clear.", app.filter_text)
+        } else {
+            "No instances found. Press 'r' to refresh.".to_string()
+        };
+        let paragraph = Paragraph::new(msg);
+        frame.render_widget(paragraph, inner);
         return;
     }
 

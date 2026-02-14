@@ -9,7 +9,7 @@ license = "BSL-1.0"
 
 [dependencies]
 # TUI
-ratatui = "0.29"
+ratatui = "0.30"
 crossterm = "0.28"
 
 # HTTP client (sync, lightweight)

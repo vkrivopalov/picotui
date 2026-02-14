@@ -109,5 +109,6 @@ pub struct LoginRequest {
 pub struct ErrorResponse {
     #[allow(dead_code)]
     pub error: String,
+    #[allow(dead_code)]
     pub error_message: String,
 }

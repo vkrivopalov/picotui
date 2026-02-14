@@ -12,6 +12,7 @@ use crossterm::{
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
+use std::sync::mpsc::channel;
 use std::time::{Duration, Instant};
 
 struct Args {
@@ -49,9 +50,7 @@ OPTIONS:
         .opt_value_from_str(["-u", "--url"])?
         .unwrap_or_else(|| "http://localhost:8080".to_string());
 
-    let refresh: u64 = args
-        .opt_value_from_str(["-r", "--refresh"])?
-        .unwrap_or(5);
+    let refresh: u64 = args.opt_value_from_str(["-r", "--refresh"])?.unwrap_or(5);
 
     let debug = args.contains(["-d", "--debug"]);
 
@@ -63,9 +62,20 @@ OPTIONS:
     Ok(Args { url, refresh, debug })
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let args = parse_args()?;
+
+    // Clear debug log file if debug mode
+    if args.debug {
+        let _ = std::fs::write("picotui.log", "");
+    }
+
+    // Create channels for API communication
+    let (request_tx, request_rx) = channel();
+    let (response_tx, response_rx) = channel();
+
+    // Spawn API worker thread
+    api::spawn_api_worker(args.url.clone(), request_rx, response_tx, args.debug);
 
     // Setup terminal
     enable_raw_mode()?;
@@ -74,14 +84,17 @@ async fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Create app
-    let mut app = App::new(&args.url, args.debug)?;
+    // Create app with channels
+    let mut app = App::new(request_tx, response_rx);
 
-    // Initialize app (check auth, load initial data)
-    app.init().await?;
+    // Start initialization (non-blocking)
+    app.start_init();
 
     // Run main loop
-    let result = run_app(&mut terminal, &mut app, args.refresh).await;
+    let result = run_app(&mut terminal, &mut app, args.refresh);
+
+    // Shutdown API worker
+    app.shutdown();
 
     // Restore terminal
     disable_raw_mode()?;
@@ -99,7 +112,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn run_app(
+fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
     refresh_secs: u64,
@@ -112,21 +125,24 @@ async fn run_app(
     let mut last_tick = Instant::now();
 
     while app.running {
+        // Process any pending API responses (non-blocking)
+        app.process_responses();
+
+        // Draw UI
         terminal.draw(|f| ui::draw(f, app))?;
 
-        let timeout = tick_rate
-            .checked_sub(last_tick.elapsed())
-            .unwrap_or_else(|| Duration::from_millis(100));
+        // Poll for keyboard input with short timeout for responsiveness
+        let timeout = Duration::from_millis(50);
 
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match app.input_mode {
-                    InputMode::Login => handle_login_input(app, key.code).await,
+                    InputMode::Login => handle_login_input(app, key.code),
                     InputMode::Normal => {
                         if app.show_detail {
                             handle_detail_input(app, key.code);
                         } else {
-                            handle_normal_input(app, key.code, key.modifiers).await;
+                            handle_normal_input(app, key.code, key.modifiers);
                         }
                     }
                 }
@@ -134,8 +150,9 @@ async fn run_app(
         }
 
         // Auto-refresh
-        if last_tick.elapsed() >= tick_rate && app.input_mode == InputMode::Normal {
-            let _ = app.refresh_data().await;
+        if last_tick.elapsed() >= tick_rate && app.input_mode == InputMode::Normal && !app.loading
+        {
+            app.request_refresh();
             last_tick = Instant::now();
         }
     }
@@ -143,7 +160,7 @@ async fn run_app(
     Ok(())
 }
 
-async fn handle_login_input(app: &mut App, key: KeyCode) {
+fn handle_login_input(app: &mut App, key: KeyCode) {
     match key {
         KeyCode::Esc | KeyCode::Char('q') => {
             app.running = false;
@@ -152,8 +169,8 @@ async fn handle_login_input(app: &mut App, key: KeyCode) {
             app.login_focus_password = !app.login_focus_password;
         }
         KeyCode::Enter => {
-            if !app.login_username.is_empty() {
-                app.do_login().await;
+            if !app.login_username.is_empty() && !app.loading {
+                app.request_login();
             }
         }
         KeyCode::Backspace => {
@@ -183,7 +200,7 @@ fn handle_detail_input(app: &mut App, key: KeyCode) {
     }
 }
 
-async fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
+fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
     match key {
         KeyCode::Char('q') => {
             app.running = false;
@@ -207,7 +224,9 @@ async fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifier
             app.toggle_detail();
         }
         KeyCode::Char('r') => {
-            let _ = app.refresh_data().await;
+            if !app.loading {
+                app.request_refresh();
+            }
         }
         _ => {}
     }

@@ -71,7 +71,13 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect) {
         Span::raw(" Quit"),
     ];
 
-    if let Some(ref error) = app.last_error {
+    if app.loading {
+        spans.push(Span::raw("  │  "));
+        spans.push(Span::styled(
+            "Loading...",
+            Style::default().fg(Color::Cyan),
+        ));
+    } else if let Some(ref error) = app.last_error {
         spans.push(Span::raw("  │  "));
         spans.push(Span::styled(
             format!("Error: {}", error),

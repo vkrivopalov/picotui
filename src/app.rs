@@ -1,7 +1,7 @@
-use crate::api::PicodataClient;
+use crate::api::{ApiRequest, ApiResponse};
 use crate::models::*;
-use anyhow::Result;
 use std::collections::HashSet;
+use std::sync::mpsc::{Receiver, Sender};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputMode {
@@ -17,8 +17,15 @@ pub enum TreeItem {
 }
 
 pub struct App {
-    pub client: PicodataClient,
     pub running: bool,
+
+    // Channels for API communication
+    pub request_tx: Sender<ApiRequest>,
+    pub response_rx: Receiver<ApiResponse>,
+
+    // Loading state
+    pub loading: bool,
+    pub pending_init: bool,
 
     // Input mode
     pub input_mode: InputMode,
@@ -46,11 +53,13 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(base_url: &str, debug: bool) -> Result<Self> {
-        let client = PicodataClient::new(base_url, debug)?;
-        Ok(Self {
-            client,
+    pub fn new(request_tx: Sender<ApiRequest>, response_rx: Receiver<ApiResponse>) -> Self {
+        Self {
             running: true,
+            request_tx,
+            response_rx,
+            loading: false,
+            pending_init: true,
             input_mode: InputMode::Normal,
             auth_enabled: false,
             login_username: String::new(),
@@ -65,48 +74,124 @@ impl App {
             tree_items: Vec::new(),
             selected_index: 0,
             show_detail: false,
-        })
+        }
     }
 
-    pub async fn init(&mut self) -> Result<()> {
-        match self.client.get_config().await {
-            Ok(config) => {
-                self.auth_enabled = config.is_auth_enabled;
-                if self.auth_enabled {
-                    self.input_mode = InputMode::Login;
-                } else {
-                    self.refresh_data().await?;
+    /// Start initialization by requesting config
+    pub fn start_init(&mut self) {
+        self.loading = true;
+        self.pending_init = true;
+        let _ = self.request_tx.send(ApiRequest::GetConfig);
+    }
+
+    /// Request a data refresh (non-blocking)
+    pub fn request_refresh(&mut self) {
+        self.loading = true;
+        self.last_error = None;
+        let _ = self.request_tx.send(ApiRequest::GetClusterInfo);
+        let _ = self.request_tx.send(ApiRequest::GetTiers);
+    }
+
+    /// Request login (non-blocking)
+    pub fn request_login(&mut self) {
+        self.loading = true;
+        self.login_error = None;
+        let _ = self.request_tx.send(ApiRequest::Login {
+            username: self.login_username.clone(),
+            password: self.login_password.clone(),
+        });
+    }
+
+    /// Process any pending API responses (non-blocking)
+    pub fn process_responses(&mut self) {
+        use std::sync::mpsc::TryRecvError;
+
+        loop {
+            match self.response_rx.try_recv() {
+                Ok(response) => self.handle_response(response),
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    self.last_error = Some("API worker disconnected".to_string());
+                    break;
                 }
             }
-            Err(e) => {
-                self.last_error = Some(format!("Failed to connect: {}", e));
-            }
         }
-        Ok(())
     }
 
-    pub async fn refresh_data(&mut self) -> Result<()> {
-        self.last_error = None;
+    fn handle_response(&mut self, response: ApiResponse) {
+        match response {
+            ApiResponse::Config(result) => {
+                self.loading = false;
+                match result {
+                    Ok(config) => {
+                        self.auth_enabled = config.is_auth_enabled;
+                        if self.auth_enabled {
+                            self.input_mode = InputMode::Login;
+                            self.pending_init = false;
+                        } else {
+                            // No auth needed, request data
+                            self.request_refresh();
+                            self.pending_init = false;
+                        }
+                    }
+                    Err(e) => {
+                        self.last_error = Some(format!("Failed to connect: {}", e));
+                        self.pending_init = false;
+                    }
+                }
+            }
 
-        match self.client.get_cluster_info().await {
-            Ok(info) => self.cluster_info = Some(info),
-            Err(e) => {
-                self.last_error = Some(format!("Cluster: {}", e));
-                return Ok(());
+            ApiResponse::Login(result) => {
+                self.loading = false;
+                match result {
+                    Ok(_) => {
+                        self.input_mode = InputMode::Normal;
+                        self.login_password.clear();
+                        self.request_refresh();
+                    }
+                    Err(e) => {
+                        self.login_error = Some(e);
+                    }
+                }
+            }
+
+            ApiResponse::ClusterInfo(result) => {
+                match result {
+                    Ok(info) => {
+                        self.cluster_info = Some(info);
+                        self.last_error = None;
+                    }
+                    Err(e) => {
+                        self.last_error = Some(format!("Cluster: {}", e));
+                    }
+                }
+                // Check if all data loaded
+                self.check_loading_complete();
+            }
+
+            ApiResponse::Tiers(result) => {
+                match result {
+                    Ok(tiers) => {
+                        self.tiers = tiers;
+                        self.rebuild_tree();
+                    }
+                    Err(e) => {
+                        if self.last_error.is_none() {
+                            self.last_error = Some(format!("Tiers: {}", e));
+                        }
+                    }
+                }
+                // Check if all data loaded
+                self.check_loading_complete();
             }
         }
+    }
 
-        match self.client.get_tiers().await {
-            Ok(tiers) => {
-                self.tiers = tiers;
-                self.rebuild_tree();
-            }
-            Err(e) => {
-                self.last_error = Some(format!("Tiers: {}", e));
-            }
+    fn check_loading_complete(&mut self) {
+        // Simple heuristic: loading complete when we have cluster info
+        if self.cluster_info.is_some() {
+            self.loading = false;
         }
-
-        Ok(())
     }
 
     pub fn rebuild_tree(&mut self) {
@@ -208,21 +293,7 @@ impl App {
         }
     }
 
-    pub async fn do_login(&mut self) {
-        self.login_error = None;
-        match self
-            .client
-            .login(&self.login_username, &self.login_password)
-            .await
-        {
-            Ok(_) => {
-                self.input_mode = InputMode::Normal;
-                self.login_password.clear();
-                let _ = self.refresh_data().await;
-            }
-            Err(e) => {
-                self.login_error = Some(e.to_string());
-            }
-        }
+    pub fn shutdown(&self) {
+        let _ = self.request_tx.send(ApiRequest::Shutdown);
     }
 }

@@ -12,11 +12,8 @@ license = "BSL-1.0"
 ratatui = "0.29"
 crossterm = "0.28"
 
-# Async runtime (minimal features)
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
-
-# HTTP client (minimal features, rustls instead of native-tls)
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# HTTP client (sync, lightweight)
+ureq = { version = "3", features = ["json"] }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }

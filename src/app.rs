@@ -48,6 +48,7 @@ pub struct App {
     pub login_password: String,
     pub login_focus: LoginFocus,
     pub login_remember_me: bool,
+    pub login_show_password: bool,
     pub login_error: Option<String>,
 
     // Data
@@ -97,6 +98,7 @@ impl App {
             login_password: String::new(),
             login_focus: LoginFocus::Username,
             login_remember_me: true,
+            login_show_password: false,
             login_error: None,
             cluster_info: None,
             tiers: Vec::new(),

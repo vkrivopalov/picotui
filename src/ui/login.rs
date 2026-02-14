@@ -79,16 +79,25 @@ pub fn draw_login(frame: &mut Frame, app: &App, area: Rect) {
         Style::default().fg(Color::White)
     };
 
+    let password_title = if app.login_show_password {
+        " Password (visible) "
+    } else {
+        " Password "
+    };
     let password_block = Block::default()
         .borders(Borders::ALL)
-        .title(" Password ")
+        .title(password_title)
         .border_style(password_style);
 
     let password_inner = password_block.inner(chunks[2]);
     frame.render_widget(password_block, chunks[2]);
 
-    let masked_password = "*".repeat(app.login_password.len());
-    let password_text = Paragraph::new(masked_password);
+    let password_display = if app.login_show_password {
+        app.login_password.clone()
+    } else {
+        "*".repeat(app.login_password.len())
+    };
+    let password_text = Paragraph::new(password_display);
     frame.render_widget(password_text, password_inner);
 
     // Show cursor in password field
@@ -137,6 +146,8 @@ pub fn draw_login(frame: &mut Frame, app: &App, area: Rect) {
         Span::raw(" navigate  "),
         Span::styled("Space", Style::default().fg(Color::Yellow)),
         Span::raw(" toggle  "),
+        Span::styled("^S", Style::default().fg(Color::Yellow)),
+        Span::raw(" show/hide  "),
         Span::styled("Enter", Style::default().fg(Color::Yellow)),
         Span::raw(" login  "),
         Span::styled("Esc", Style::default().fg(Color::Yellow)),

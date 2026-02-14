@@ -138,7 +138,7 @@ fn run_app(
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match app.input_mode {
-                    InputMode::Login => handle_login_input(app, key.code),
+                    InputMode::Login => handle_login_input(app, key.code, key.modifiers),
                     InputMode::Normal => {
                         if app.show_detail {
                             handle_detail_input(app, key.code);
@@ -161,10 +161,14 @@ fn run_app(
     Ok(())
 }
 
-fn handle_login_input(app: &mut App, key: KeyCode) {
+fn handle_login_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
     match key {
         KeyCode::Esc | KeyCode::Char('q') => {
             app.running = false;
+        }
+        KeyCode::Char('s') if modifiers.contains(KeyModifiers::CONTROL) => {
+            // Toggle show/hide password
+            app.login_show_password = !app.login_show_password;
         }
         KeyCode::Tab | KeyCode::Down => {
             // Cycle through: Username -> Password -> RememberMe -> Username

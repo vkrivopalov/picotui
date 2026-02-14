@@ -27,3 +27,11 @@ pico-args = "0.5"
 
 # Cross-platform directories
 dirs = "5"
+
+[dev-dependencies]
+# Mock HTTP server for integration tests
+wiremock = "0.6"
+tokio = { version = "1", features = ["rt", "macros"] }
+
+# Temp directories for token tests
+tempfile = "3"

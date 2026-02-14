@@ -1,11 +1,7 @@
-mod api;
-mod app;
-mod models;
-mod tokens;
-mod ui;
-
 use anyhow::{anyhow, Result};
-use app::{App, InputMode, LoginFocus, ViewMode};
+use picotui::api;
+use picotui::app::{App, InputMode, LoginFocus, ViewMode};
+use picotui::ui;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,

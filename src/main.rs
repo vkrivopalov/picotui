@@ -1,12 +1,12 @@
 use anyhow::{anyhow, Result};
-use picotui::api;
-use picotui::app::{App, InputMode, LoginFocus, ViewMode};
-use picotui::ui;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use picotui::api;
+use picotui::app::{App, InputMode, LoginFocus, ViewMode};
+use picotui::ui;
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 use std::sync::mpsc::channel;
@@ -56,7 +56,11 @@ OPTIONS:
         return Err(anyhow!("Unknown arguments: {:?}", remaining));
     }
 
-    Ok(Args { url, refresh, debug })
+    Ok(Args {
+        url,
+        refresh,
+        debug,
+    })
 }
 
 fn main() -> Result<()> {
@@ -147,8 +151,7 @@ fn run_app(
         }
 
         // Auto-refresh
-        if last_tick.elapsed() >= tick_rate && app.input_mode == InputMode::Normal && !app.loading
-        {
+        if last_tick.elapsed() >= tick_rate && app.input_mode == InputMode::Normal && !app.loading {
             app.request_refresh();
             last_tick = Instant::now();
         }
@@ -200,28 +203,24 @@ fn handle_login_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
             // Space toggles checkbox
             app.login_remember_me = !app.login_remember_me;
         }
-        KeyCode::Backspace => {
-            match app.login_focus {
-                LoginFocus::Username => {
-                    app.login_username.pop();
-                }
-                LoginFocus::Password => {
-                    app.login_password.pop();
-                }
-                LoginFocus::RememberMe => {}
+        KeyCode::Backspace => match app.login_focus {
+            LoginFocus::Username => {
+                app.login_username.pop();
             }
-        }
-        KeyCode::Char(c) => {
-            match app.login_focus {
-                LoginFocus::Username => {
-                    app.login_username.push(c);
-                }
-                LoginFocus::Password => {
-                    app.login_password.push(c);
-                }
-                LoginFocus::RememberMe => {}
+            LoginFocus::Password => {
+                app.login_password.pop();
             }
-        }
+            LoginFocus::RememberMe => {}
+        },
+        KeyCode::Char(c) => match app.login_focus {
+            LoginFocus::Username => {
+                app.login_username.push(c);
+            }
+            LoginFocus::Password => {
+                app.login_password.push(c);
+            }
+            LoginFocus::RememberMe => {}
+        },
         _ => {}
     }
 }

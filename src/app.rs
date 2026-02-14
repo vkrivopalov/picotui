@@ -305,7 +305,8 @@ impl App {
                                 // Saved token is invalid, need to re-login
                                 self.has_saved_token = false;
                                 self.input_mode = InputMode::Login;
-                                self.login_error = Some("Session expired, please login again".to_string());
+                                self.login_error =
+                                    Some("Session expired, please login again".to_string());
                                 // Clear invalid token from disk
                                 let _ = tokens::delete_tokens(&self.base_url);
                             }
@@ -506,9 +507,10 @@ impl App {
                     || tier_name.to_lowercase().contains(&filter_lower)
                     || rs_name.to_lowercase().contains(&filter_lower)
                     || inst.binary_address.to_lowercase().contains(&filter_lower)
-                    || inst.failure_domain.values().any(|v| {
-                        v.to_lowercase().contains(&filter_lower)
-                    })
+                    || inst
+                        .failure_domain
+                        .values()
+                        .any(|v| v.to_lowercase().contains(&filter_lower))
             })
             .collect();
 
@@ -564,11 +566,7 @@ impl App {
     pub fn get_item_count(&self) -> usize {
         match self.view_mode {
             ViewMode::Tiers => self.tree_items.len(),
-            ViewMode::Replicasets => self
-                .tiers
-                .iter()
-                .map(|t| t.replicasets.len())
-                .sum(),
+            ViewMode::Replicasets => self.tiers.iter().map(|t| t.replicasets.len()).sum(),
             ViewMode::Instances => self
                 .tiers
                 .iter()

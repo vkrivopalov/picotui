@@ -20,7 +20,8 @@ fn token_file_path() -> Option<PathBuf> {
 
 /// Save tokens for a given URL
 pub fn save_tokens(url: &str, auth: &str, refresh: &str) -> anyhow::Result<()> {
-    let path = token_file_path().ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?;
+    let path =
+        token_file_path().ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?;
 
     // Create parent directory with restricted permissions
     if let Some(parent) = path.parent() {
@@ -89,7 +90,8 @@ pub fn load_tokens(url: &str) -> Option<TokenEntry> {
 /// Delete tokens for a given URL
 #[allow(dead_code)]
 pub fn delete_tokens(url: &str) -> anyhow::Result<()> {
-    let path = token_file_path().ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?;
+    let path =
+        token_file_path().ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?;
 
     if !path.exists() {
         return Ok(());

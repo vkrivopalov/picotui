@@ -45,8 +45,14 @@ fn test_tiers_view_renders_cluster_info() {
     let buffer = terminal.backend().buffer();
 
     // Check cluster info is displayed
-    assert!(buffer_contains(buffer, "test-cluster"), "Should show cluster name");
-    assert!(buffer_contains(buffer, "1.0.0"), "Should show cluster version");
+    assert!(
+        buffer_contains(buffer, "test-cluster"),
+        "Should show cluster name"
+    );
+    assert!(
+        buffer_contains(buffer, "1.0.0"),
+        "Should show cluster version"
+    );
 }
 
 #[test]
@@ -59,8 +65,14 @@ fn test_tiers_view_renders_tiers() {
     let buffer = terminal.backend().buffer();
 
     // Check tier names are displayed
-    assert!(buffer_contains(buffer, "default"), "Should show 'default' tier");
-    assert!(buffer_contains(buffer, "storage"), "Should show 'storage' tier");
+    assert!(
+        buffer_contains(buffer, "default"),
+        "Should show 'default' tier"
+    );
+    assert!(
+        buffer_contains(buffer, "storage"),
+        "Should show 'storage' tier"
+    );
 }
 
 #[test]
@@ -128,7 +140,10 @@ fn test_replicasets_view_renders() {
     let buffer = terminal.backend().buffer();
 
     // Check view title
-    assert!(buffer_contains(buffer, "Replicasets"), "Should show Replicasets title");
+    assert!(
+        buffer_contains(buffer, "Replicasets"),
+        "Should show Replicasets title"
+    );
 
     // Check all replicasets are listed
     assert!(buffer_contains(buffer, "r1"), "Should show replicaset r1");
@@ -148,15 +163,24 @@ fn test_instances_view_renders() {
     let buffer = terminal.backend().buffer();
 
     // Check view title
-    assert!(buffer_contains(buffer, "Instances"), "Should show Instances title");
+    assert!(
+        buffer_contains(buffer, "Instances"),
+        "Should show Instances title"
+    );
 
     // Check all instances are listed
     assert!(buffer_contains(buffer, "i1"), "Should show instance i1");
     assert!(buffer_contains(buffer, "i2"), "Should show instance i2");
     assert!(buffer_contains(buffer, "i3"), "Should show instance i3");
     assert!(buffer_contains(buffer, "i4"), "Should show instance i4");
-    assert!(buffer_contains(buffer, "s1-i1"), "Should show instance s1-i1");
-    assert!(buffer_contains(buffer, "s1-i2"), "Should show instance s1-i2");
+    assert!(
+        buffer_contains(buffer, "s1-i1"),
+        "Should show instance s1-i1"
+    );
+    assert!(
+        buffer_contains(buffer, "s1-i2"),
+        "Should show instance s1-i2"
+    );
 }
 
 #[test]
@@ -206,7 +230,10 @@ fn test_instances_view_filter_shows_indicator() {
     let buffer = terminal.backend().buffer();
 
     // Check filter indicator in title
-    assert!(buffer_contains(buffer, "Filter:"), "Should show filter label");
+    assert!(
+        buffer_contains(buffer, "Filter:"),
+        "Should show filter label"
+    );
     assert!(buffer_contains(buffer, "dc1"), "Should show filter text");
 }
 
@@ -224,7 +251,10 @@ fn test_instances_view_filter_active_shows_cursor() {
     let buffer = terminal.backend().buffer();
 
     // Check filter input in status bar
-    assert!(buffer_contains(buffer, "Filter:"), "Should show filter in status bar");
+    assert!(
+        buffer_contains(buffer, "Filter:"),
+        "Should show filter in status bar"
+    );
     assert!(buffer_contains(buffer, "test"), "Should show filter text");
     // Cursor indicator
     assert!(buffer_contains(buffer, "█"), "Should show cursor");
@@ -246,9 +276,18 @@ fn test_login_screen_renders() {
 
     // Check login form elements
     assert!(buffer_contains(buffer, "Login"), "Should show Login title");
-    assert!(buffer_contains(buffer, "Username"), "Should show Username field");
-    assert!(buffer_contains(buffer, "Password"), "Should show Password field");
-    assert!(buffer_contains(buffer, "Remember"), "Should show Remember me checkbox");
+    assert!(
+        buffer_contains(buffer, "Username"),
+        "Should show Username field"
+    );
+    assert!(
+        buffer_contains(buffer, "Password"),
+        "Should show Password field"
+    );
+    assert!(
+        buffer_contains(buffer, "Remember"),
+        "Should show Remember me checkbox"
+    );
 }
 
 #[test]
@@ -284,8 +323,14 @@ fn test_status_bar_shows_keybindings() {
     let buffer = terminal.backend().buffer();
 
     // Check common keybindings are shown
-    assert!(buffer_contains(buffer, "Navigate"), "Should show Navigate hint");
-    assert!(buffer_contains(buffer, "Refresh"), "Should show Refresh hint");
+    assert!(
+        buffer_contains(buffer, "Navigate"),
+        "Should show Navigate hint"
+    );
+    assert!(
+        buffer_contains(buffer, "Refresh"),
+        "Should show Refresh hint"
+    );
     assert!(buffer_contains(buffer, "Quit"), "Should show Quit hint");
 }
 
@@ -317,8 +362,14 @@ fn test_offline_instance_shown_differently() {
     let buffer = terminal.backend().buffer();
 
     // Instance i3 is offline
-    assert!(buffer_contains(buffer, "i3"), "Should show offline instance");
-    assert!(buffer_contains(buffer, "Offline"), "Should show Offline state");
+    assert!(
+        buffer_contains(buffer, "i3"),
+        "Should show offline instance"
+    );
+    assert!(
+        buffer_contains(buffer, "Offline"),
+        "Should show Offline state"
+    );
 }
 
 #[test]

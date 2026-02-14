@@ -1,5 +1,5 @@
-use super::{centered_rect, format_bytes};
 use super::cluster_header::draw_cluster_header;
+use super::{centered_rect, format_bytes};
 use crate::app::{App, TreeItem, ViewMode};
 use crate::models::{InstanceInfo, ReplicasetInfo, StateVariant};
 use ratatui::{
@@ -144,7 +144,10 @@ fn draw_replicasets_view(frame: &mut Frame, app: &App, area: Rect) {
                 Span::styled(rs.state.to_string(), state_style),
                 Span::raw("]  "),
                 Span::styled("Tier:", Style::default().fg(Color::Gray)),
-                Span::styled(format!(" {}  ", tier_name), Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!(" {}  ", tier_name),
+                    Style::default().fg(Color::Cyan),
+                ),
                 Span::styled("Inst:", Style::default().fg(Color::Gray)),
                 Span::raw(format!(" {}  ", rs.instance_count)),
                 Span::styled("Mem:", Style::default().fg(Color::Gray)),
@@ -211,7 +214,10 @@ fn draw_instances_view(frame: &mut Frame, app: &App, area: Rect) {
 
     if instances.is_empty() {
         let msg = if !app.filter_text.is_empty() {
-            format!("No instances match filter \"{}\". Press Esc to clear.", app.filter_text)
+            format!(
+                "No instances match filter \"{}\". Press Esc to clear.",
+                app.filter_text
+            )
         } else {
             "No instances found. Press 'r' to refresh.".to_string()
         };

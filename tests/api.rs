@@ -4,7 +4,9 @@
 
 mod common;
 
-use common::{mock_cluster_info, mock_config_no_auth, mock_config_with_auth, mock_login_success, mock_tiers};
+use common::{
+    mock_cluster_info, mock_config_no_auth, mock_config_with_auth, mock_login_success, mock_tiers,
+};
 use picotui::api::{spawn_api_worker, ApiRequest, ApiResponse};
 use std::sync::mpsc::channel;
 use std::time::Duration;
@@ -133,8 +135,16 @@ async fn test_get_tiers() {
             assert_eq!(tiers.len(), 2, "Should have 2 tiers");
             assert_eq!(tiers[0].name, "default");
             assert_eq!(tiers[1].name, "storage");
-            assert_eq!(tiers[0].replicasets.len(), 2, "Default tier should have 2 replicasets");
-            assert_eq!(tiers[0].replicasets[0].instances.len(), 2, "r1 should have 2 instances");
+            assert_eq!(
+                tiers[0].replicasets.len(),
+                2,
+                "Default tier should have 2 replicasets"
+            );
+            assert_eq!(
+                tiers[0].replicasets[0].instances.len(),
+                2,
+                "r1 should have 2 instances"
+            );
         }
         other => panic!("Unexpected response: {:?}", other),
     }

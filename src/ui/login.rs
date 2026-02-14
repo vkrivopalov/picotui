@@ -118,10 +118,7 @@ pub fn draw_login(frame: &mut Frame, app: &App, area: Rect) {
 
     let checkbox_char = if app.login_remember_me { "[x]" } else { "[ ]" };
     let checkbox_line = Line::from(vec![
-        Span::styled(
-            if checkbox_focused { "> " } else { "  " },
-            checkbox_style,
-        ),
+        Span::styled(if checkbox_focused { "> " } else { "  " }, checkbox_style),
         Span::styled(checkbox_char, checkbox_style),
         Span::styled(" Remember me", checkbox_style),
         Span::styled(

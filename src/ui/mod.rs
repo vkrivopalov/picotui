@@ -55,9 +55,13 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
         .title(" picotui - Picodata Cluster Monitor ")
-        .title_bottom(Line::from(vec![
-            Span::styled(mode_label, Style::default().fg(Color::Cyan)),
-        ]).right_aligned());
+        .title_bottom(
+            Line::from(vec![Span::styled(
+                mode_label,
+                Style::default().fg(Color::Cyan),
+            )])
+            .right_aligned(),
+        );
     frame.render_widget(block, area);
 }
 
@@ -122,10 +126,7 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect) {
 
     if app.loading {
         spans.push(Span::raw("  │  "));
-        spans.push(Span::styled(
-            "Loading...",
-            Style::default().fg(Color::Cyan),
-        ));
+        spans.push(Span::styled("Loading...", Style::default().fg(Color::Cyan)));
     } else if let Some(ref error) = app.last_error {
         spans.push(Span::raw("  │  "));
         spans.push(Span::styled(

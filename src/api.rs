@@ -13,7 +13,10 @@ pub enum ApiRequest {
         password: String,
         remember_me: bool,
     },
-    SetToken { auth: String, refresh: String },
+    SetToken {
+        auth: String,
+        refresh: String,
+    },
     GetClusterInfo,
     GetTiers,
     Shutdown,
@@ -79,7 +82,10 @@ pub fn spawn_api_worker(
                     remember_me,
                 } => {
                     let url = format!("{}/api/v1/session", base_url);
-                    log_debug(debug, &format!("POST {} (user={}, remember={})", url, username, remember_me));
+                    log_debug(
+                        debug,
+                        &format!("POST {} (user={}, remember={})", url, username, remember_me),
+                    );
 
                     let req_body = LoginRequest { username, password };
                     let result = client
@@ -100,7 +106,10 @@ pub fn spawn_api_worker(
                                         &token_resp.auth,
                                         &token_resp.refresh,
                                     ) {
-                                        log_debug(debug, &format!("  WARN: failed to save tokens: {}", e));
+                                        log_debug(
+                                            debug,
+                                            &format!("  WARN: failed to save tokens: {}", e),
+                                        );
                                     } else {
                                         log_debug(debug, "  OK: tokens saved to disk");
                                     }
@@ -138,7 +147,10 @@ pub fn spawn_api_worker(
 
                     // Also update saved tokens with potentially refreshed values
                     if let Err(e) = tokens::save_tokens(&base_url, &auth, &refresh) {
-                        log_debug(debug, &format!("  WARN: failed to update saved tokens: {}", e));
+                        log_debug(
+                            debug,
+                            &format!("  WARN: failed to update saved tokens: {}", e),
+                        );
                     }
                 }
 

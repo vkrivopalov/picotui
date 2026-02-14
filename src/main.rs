@@ -5,7 +5,7 @@ mod tokens;
 mod ui;
 
 use anyhow::{anyhow, Result};
-use app::{App, InputMode, LoginFocus};
+use app::{App, InputMode, LoginFocus, ViewMode};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
@@ -272,6 +272,23 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
             if app.auth_enabled {
                 app.logout();
             }
+        }
+        KeyCode::Char('g') => {
+            // Cycle view mode
+            app.view_mode = app.view_mode.cycle_next();
+            app.selected_index = 0;
+        }
+        KeyCode::Char('1') => {
+            app.view_mode = ViewMode::Tiers;
+            app.selected_index = 0;
+        }
+        KeyCode::Char('2') => {
+            app.view_mode = ViewMode::Replicasets;
+            app.selected_index = 0;
+        }
+        KeyCode::Char('3') => {
+            app.view_mode = ViewMode::Instances;
+            app.selected_index = 0;
         }
         _ => {}
     }

@@ -43,31 +43,44 @@ pub fn draw(frame: &mut Frame, app: &App) {
             login::draw_login(frame, app, frame.area());
         }
         InputMode::Normal => {
-            draw_header(frame, chunks[0]);
+            draw_header(frame, app, chunks[0]);
             nodes::draw_nodes(frame, app, chunks[1]);
             draw_status_bar(frame, app, chunks[2]);
         }
     }
 }
 
-fn draw_header(frame: &mut Frame, area: Rect) {
+fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
+    let mode_label = format!(" [{}] ", app.view_mode.label());
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(" picotui - Picodata Cluster Monitor ");
+        .title(" picotui - Picodata Cluster Monitor ")
+        .title_bottom(Line::from(vec![
+            Span::styled(mode_label, Style::default().fg(Color::Cyan)),
+        ]).right_aligned());
     frame.render_widget(block, area);
 }
 
 fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect) {
+    use crate::app::ViewMode;
+
     let mut spans = vec![
         Span::styled(" ↑↓/jk", Style::default().fg(Color::Yellow)),
         Span::raw(" Navigate  "),
-        Span::styled("←→/hl", Style::default().fg(Color::Yellow)),
-        Span::raw(" Collapse/Expand  "),
-        Span::styled("Enter", Style::default().fg(Color::Yellow)),
-        Span::raw(" Details  "),
-        Span::styled("r", Style::default().fg(Color::Yellow)),
-        Span::raw(" Refresh  "),
     ];
+
+    // Show expand/collapse only in Tiers mode
+    if app.view_mode == ViewMode::Tiers {
+        spans.push(Span::styled("←→/hl", Style::default().fg(Color::Yellow)));
+        spans.push(Span::raw(" Collapse/Expand  "));
+    }
+
+    spans.push(Span::styled("Enter", Style::default().fg(Color::Yellow)));
+    spans.push(Span::raw(" Details  "));
+    spans.push(Span::styled("g", Style::default().fg(Color::Yellow)));
+    spans.push(Span::raw(" View  "));
+    spans.push(Span::styled("r", Style::default().fg(Color::Yellow)));
+    spans.push(Span::raw(" Refresh  "));
 
     // Show logout option if auth is enabled
     if app.auth_enabled {

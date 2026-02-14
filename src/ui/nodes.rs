@@ -1,7 +1,7 @@
 use super::{centered_rect, format_bytes};
 use super::cluster_header::draw_cluster_header;
-use crate::app::{App, TreeItem};
-use crate::models::{InstanceInfo, StateVariant};
+use crate::app::{App, TreeItem, ViewMode};
+use crate::models::{InstanceInfo, ReplicasetInfo, StateVariant};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -15,7 +15,7 @@ pub fn draw_nodes(frame: &mut Frame, app: &App, area: Rect) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(5), // Cluster header
-            Constraint::Min(0),    // Tree
+            Constraint::Min(0),    // Content
         ])
         .split(area);
 
@@ -30,8 +30,12 @@ pub fn draw_nodes(frame: &mut Frame, app: &App, area: Rect) {
         frame.render_widget(loading, chunks[0]);
     }
 
-    // Draw tier tree
-    draw_tree(frame, app, chunks[1]);
+    // Draw content based on view mode
+    match app.view_mode {
+        ViewMode::Tiers => draw_tiers_view(frame, app, chunks[1]),
+        ViewMode::Replicasets => draw_replicasets_view(frame, app, chunks[1]),
+        ViewMode::Instances => draw_instances_view(frame, app, chunks[1]),
+    }
 
     // Draw detail popup if active
     if app.show_detail {
@@ -39,6 +43,10 @@ pub fn draw_nodes(frame: &mut Frame, app: &App, area: Rect) {
             draw_instance_detail(frame, instance, frame.area());
         }
     }
+}
+
+fn draw_tiers_view(frame: &mut Frame, app: &App, area: Rect) {
+    draw_tree(frame, app, area);
 }
 
 fn draw_tree(frame: &mut Frame, app: &App, area: Rect) {
@@ -70,6 +78,167 @@ fn draw_tree(frame: &mut Frame, app: &App, area: Rect) {
                     format_instance_line(app, *tier_idx, *rs_idx, *inst_idx)
                 }
             };
+
+            let style = if is_selected {
+                Style::default()
+                    .bg(Color::DarkGray)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+
+            ListItem::new(line).style(style)
+        })
+        .collect();
+
+    let list = List::new(items);
+    frame.render_widget(list, inner);
+}
+
+fn draw_replicasets_view(frame: &mut Frame, app: &App, area: Rect) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Replicasets ");
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    // Collect all replicasets from all tiers
+    let replicasets: Vec<(&str, &ReplicasetInfo)> = app
+        .tiers
+        .iter()
+        .flat_map(|tier| {
+            tier.replicasets
+                .iter()
+                .map(move |rs| (tier.name.as_str(), rs))
+        })
+        .collect();
+
+    if replicasets.is_empty() {
+        let msg = Paragraph::new("No replicasets found. Press 'r' to refresh.");
+        frame.render_widget(msg, inner);
+        return;
+    }
+
+    let items: Vec<ListItem> = replicasets
+        .iter()
+        .enumerate()
+        .map(|(idx, (tier_name, rs))| {
+            let is_selected = idx == app.selected_index;
+
+            let state_style = match rs.state {
+                StateVariant::Online => Style::default().fg(Color::Green),
+                StateVariant::Offline => Style::default().fg(Color::Red),
+                StateVariant::Expelled => Style::default().fg(Color::DarkGray),
+            };
+
+            let mem_str = format!(
+                "{}/{}",
+                format_bytes(rs.memory.used),
+                format_bytes(rs.memory.usable)
+            );
+
+            let line = Line::from(vec![
+                Span::styled(rs.name.clone(), Style::default().fg(Color::White)),
+                Span::raw(" ["),
+                Span::styled(rs.state.to_string(), state_style),
+                Span::raw("]  "),
+                Span::styled("Tier:", Style::default().fg(Color::Gray)),
+                Span::styled(format!(" {}  ", tier_name), Style::default().fg(Color::Cyan)),
+                Span::styled("Inst:", Style::default().fg(Color::Gray)),
+                Span::raw(format!(" {}  ", rs.instance_count)),
+                Span::styled("Mem:", Style::default().fg(Color::Gray)),
+                Span::raw(format!(" {} ({:.1}%)", mem_str, rs.capacity_usage)),
+            ]);
+
+            let style = if is_selected {
+                Style::default()
+                    .bg(Color::DarkGray)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+
+            ListItem::new(line).style(style)
+        })
+        .collect();
+
+    let list = List::new(items);
+    frame.render_widget(list, inner);
+}
+
+fn draw_instances_view(frame: &mut Frame, app: &App, area: Rect) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Instances ");
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    // Collect all instances from all tiers/replicasets
+    let instances: Vec<(&str, &str, &InstanceInfo)> = app
+        .tiers
+        .iter()
+        .flat_map(|tier| {
+            tier.replicasets.iter().flat_map(move |rs| {
+                rs.instances
+                    .iter()
+                    .map(move |inst| (tier.name.as_str(), rs.name.as_str(), inst))
+            })
+        })
+        .collect();
+
+    if instances.is_empty() {
+        let msg = Paragraph::new("No instances found. Press 'r' to refresh.");
+        frame.render_widget(msg, inner);
+        return;
+    }
+
+    let items: Vec<ListItem> = instances
+        .iter()
+        .enumerate()
+        .map(|(idx, (_tier_name, rs_name, inst))| {
+            let is_selected = idx == app.selected_index;
+
+            let state_style = match inst.current_state {
+                StateVariant::Online => Style::default().fg(Color::Green),
+                StateVariant::Offline => Style::default().fg(Color::Red),
+                StateVariant::Expelled => Style::default().fg(Color::DarkGray),
+            };
+
+            let leader_marker = if inst.is_leader { "★ " } else { "  " };
+
+            let failure_domain_str = if inst.failure_domain.is_empty() {
+                String::new()
+            } else {
+                inst.failure_domain
+                    .iter()
+                    .map(|(k, v)| format!("{}:{}", k, v))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            };
+
+            let line = Line::from(vec![
+                Span::styled(leader_marker, Style::default().fg(Color::Yellow)),
+                Span::styled(inst.name.clone(), Style::default().fg(Color::White)),
+                Span::raw(" ["),
+                Span::styled(inst.current_state.to_string(), state_style),
+                Span::raw("]  "),
+                Span::styled("RS:", Style::default().fg(Color::Gray)),
+                Span::raw(format!(" {}  ", rs_name)),
+                Span::styled(
+                    inst.binary_address.clone(),
+                    Style::default().fg(Color::Gray),
+                ),
+                if !failure_domain_str.is_empty() {
+                    Span::styled(
+                        format!("  {}", failure_domain_str),
+                        Style::default().fg(Color::DarkGray),
+                    )
+                } else {
+                    Span::raw("")
+                },
+            ]);
 
             let style = if is_selected {
                 Style::default()

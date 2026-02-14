@@ -17,6 +17,32 @@ pub enum LoginFocus {
     RememberMe,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ViewMode {
+    #[default]
+    Tiers,
+    Replicasets,
+    Instances,
+}
+
+impl ViewMode {
+    pub fn cycle_next(self) -> Self {
+        match self {
+            ViewMode::Tiers => ViewMode::Replicasets,
+            ViewMode::Replicasets => ViewMode::Instances,
+            ViewMode::Instances => ViewMode::Tiers,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            ViewMode::Tiers => "Tiers",
+            ViewMode::Replicasets => "Replicasets",
+            ViewMode::Instances => "Instances",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum TreeItem {
     Tier(usize),
@@ -64,6 +90,9 @@ pub struct App {
 
     // Detail popup
     pub show_detail: bool,
+
+    // View mode
+    pub view_mode: ViewMode,
 }
 
 impl App {
@@ -108,6 +137,7 @@ impl App {
             tree_items: Vec::new(),
             selected_index: 0,
             show_detail: false,
+            view_mode: ViewMode::default(),
         }
     }
 
@@ -282,15 +312,17 @@ impl App {
     }
 
     pub fn select_next(&mut self) {
-        if !self.tree_items.is_empty() {
-            self.selected_index = (self.selected_index + 1) % self.tree_items.len();
+        let count = self.get_item_count();
+        if count > 0 {
+            self.selected_index = (self.selected_index + 1) % count;
         }
     }
 
     pub fn select_previous(&mut self) {
-        if !self.tree_items.is_empty() {
+        let count = self.get_item_count();
+        if count > 0 {
             self.selected_index = if self.selected_index == 0 {
-                self.tree_items.len() - 1
+                count - 1
             } else {
                 self.selected_index - 1
             };
@@ -298,24 +330,38 @@ impl App {
     }
 
     pub fn expand_selected(&mut self) {
-        if let Some(item) = self.tree_items.get(self.selected_index) {
-            match item {
-                TreeItem::Tier(tier_idx) => {
-                    self.expanded_tiers.insert(*tier_idx);
-                    self.rebuild_tree();
+        match self.view_mode {
+            ViewMode::Tiers => {
+                if let Some(item) = self.tree_items.get(self.selected_index) {
+                    match item {
+                        TreeItem::Tier(tier_idx) => {
+                            self.expanded_tiers.insert(*tier_idx);
+                            self.rebuild_tree();
+                        }
+                        TreeItem::Replicaset(tier_idx, rs_idx) => {
+                            self.expanded_replicasets.insert((*tier_idx, *rs_idx));
+                            self.rebuild_tree();
+                        }
+                        TreeItem::Instance(_, _, _) => {
+                            self.show_detail = true;
+                        }
+                    }
                 }
-                TreeItem::Replicaset(tier_idx, rs_idx) => {
-                    self.expanded_replicasets.insert((*tier_idx, *rs_idx));
-                    self.rebuild_tree();
-                }
-                TreeItem::Instance(_, _, _) => {
-                    self.show_detail = true;
-                }
+            }
+            ViewMode::Replicasets => {
+                // Could expand to show instances, but for now do nothing
+            }
+            ViewMode::Instances => {
+                self.show_detail = true;
             }
         }
     }
 
     pub fn collapse_selected(&mut self) {
+        if self.view_mode != ViewMode::Tiers {
+            return;
+        }
+
         if let Some(item) = self.tree_items.get(self.selected_index) {
             match item {
                 TreeItem::Tier(tier_idx) => {
@@ -338,19 +384,66 @@ impl App {
     }
 
     pub fn toggle_detail(&mut self) {
-        self.show_detail = !self.show_detail;
+        // Only show detail if we can get an instance
+        match self.view_mode {
+            ViewMode::Tiers => {
+                // Only toggle if an instance is selected
+                if let Some(TreeItem::Instance(_, _, _)) = self.tree_items.get(self.selected_index)
+                {
+                    self.show_detail = !self.show_detail;
+                }
+            }
+            ViewMode::Replicasets => {
+                // Can't show instance detail in replicasets view
+            }
+            ViewMode::Instances => {
+                self.show_detail = !self.show_detail;
+            }
+        }
     }
 
     pub fn get_selected_instance(&self) -> Option<&InstanceInfo> {
-        if let Some(TreeItem::Instance(tier_idx, rs_idx, inst_idx)) =
-            self.tree_items.get(self.selected_index)
-        {
-            self.tiers
-                .get(*tier_idx)
-                .and_then(|t| t.replicasets.get(*rs_idx))
-                .and_then(|r| r.instances.get(*inst_idx))
-        } else {
-            None
+        match self.view_mode {
+            ViewMode::Tiers => {
+                if let Some(TreeItem::Instance(tier_idx, rs_idx, inst_idx)) =
+                    self.tree_items.get(self.selected_index)
+                {
+                    self.tiers
+                        .get(*tier_idx)
+                        .and_then(|t| t.replicasets.get(*rs_idx))
+                        .and_then(|r| r.instances.get(*inst_idx))
+                } else {
+                    None
+                }
+            }
+            ViewMode::Replicasets => None, // Can't select instance in replicasets view
+            ViewMode::Instances => {
+                // Flatten all instances and get by index
+                let instances: Vec<&InstanceInfo> = self
+                    .tiers
+                    .iter()
+                    .flat_map(|t| t.replicasets.iter().flat_map(|r| r.instances.iter()))
+                    .collect();
+                instances.get(self.selected_index).copied()
+            }
+        }
+    }
+
+    /// Get the total number of items in the current view
+    pub fn get_item_count(&self) -> usize {
+        match self.view_mode {
+            ViewMode::Tiers => self.tree_items.len(),
+            ViewMode::Replicasets => self
+                .tiers
+                .iter()
+                .map(|t| t.replicasets.len())
+                .sum(),
+            ViewMode::Instances => self
+                .tiers
+                .iter()
+                .flat_map(|t| t.replicasets.iter())
+                .map(|r| r.instances.len())
+                .sum(),
         }
     }
 

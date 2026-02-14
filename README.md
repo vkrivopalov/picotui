@@ -8,6 +8,7 @@ Terminal UI for Picodata cluster management, built with [ratatui](https://ratatu
 - **Hierarchical Tree View**: Navigate tiers → replicasets → instances with expand/collapse
 - **Instance Details**: View detailed information including addresses, failure domains, and state
 - **JWT Authentication**: Login support when authentication is enabled
+- **Persistent Sessions**: Optional "Remember me" to save login across sessions
 - **Auto-refresh**: Automatic data refresh with configurable interval
 - **Debug Mode**: Log all API requests/responses for troubleshooting
 
@@ -51,6 +52,7 @@ picotui --url http://localhost:8080 --debug
 | Key | Action |
 |-----|--------|
 | `r` | Refresh data |
+| `X` | Logout and exit (clears saved session) |
 | `q` | Quit |
 | `Ctrl+C` | Quit |
 | `Esc` | Close popup |
@@ -58,7 +60,9 @@ picotui --url http://localhost:8080 --debug
 ### Login Screen
 | Key | Action |
 |-----|--------|
-| `Tab` | Switch between username/password fields |
+| `Tab` / `↑` / `↓` | Navigate between fields |
+| `Space` | Toggle checkbox (Remember me) |
+| `Ctrl+S` | Show/hide password |
 | `Enter` | Submit login |
 | `Esc` / `q` | Quit |
 
@@ -80,7 +84,7 @@ picotui --url http://localhost:8080 --debug
 │   └─▶ r2 [Online]  Inst: 3  Mem: 600 MiB/2 GiB (30.0%)             │
 │ ▶ storage  RS: 1  Inst: 3  RF: 3  Buckets: 0  Vote: ✗              │
 ├─────────────────────────────────────────────────────────────────────┤
-│ ↑↓/jk Navigate  ←→/hl Collapse/Expand  Enter Details  r Refresh  q Quit │
+│ ↑↓/jk Navigate  ←→/hl Collapse/Expand  Enter Details  r Refresh  X Logout  q Quit │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -93,6 +97,18 @@ The TUI connects to these Picodata HTTP API endpoints:
 - `GET /api/v1/session` - Refresh session tokens
 - `GET /api/v1/cluster` - Get cluster overview
 - `GET /api/v1/tiers` - Get tiers with replicasets and instances
+
+## Persistent Sessions
+
+When "Remember me" is checked during login (enabled by default), your session token is saved locally:
+
+- **Linux/FreeBSD**: `~/.config/picotui/tokens.json`
+- **macOS**: `~/Library/Application Support/picotui/tokens.json`
+- **Windows**: `%APPDATA%\picotui\tokens.json`
+
+On next launch, picotui will automatically use the saved token, skipping the login screen.
+
+To clear saved sessions, press `X` (Shift+x) to logout and exit. This deletes the stored token.
 
 ## Debug Mode
 

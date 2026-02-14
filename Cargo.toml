@@ -24,3 +24,6 @@ anyhow = "1"
 
 # CLI arguments (lightweight alternative to clap)
 pico-args = "0.5"
+
+# Cross-platform directories
+dirs = "5"

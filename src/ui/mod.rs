@@ -67,9 +67,16 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect) {
         Span::raw(" Details  "),
         Span::styled("r", Style::default().fg(Color::Yellow)),
         Span::raw(" Refresh  "),
-        Span::styled("q", Style::default().fg(Color::Yellow)),
-        Span::raw(" Quit"),
     ];
+
+    // Show logout option if auth is enabled
+    if app.auth_enabled {
+        spans.push(Span::styled("X", Style::default().fg(Color::Yellow)));
+        spans.push(Span::raw(" Logout  "));
+    }
+
+    spans.push(Span::styled("q", Style::default().fg(Color::Yellow)));
+    spans.push(Span::raw(" Quit"));
 
     if app.loading {
         spans.push(Span::raw("  │  "));

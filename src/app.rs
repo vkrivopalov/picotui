@@ -1,5 +1,6 @@
 use crate::api::{ApiRequest, ApiResponse};
 use crate::models::*;
+use crate::tokens;
 use std::collections::HashSet;
 use std::sync::mpsc::{Receiver, Sender};
 
@@ -7,6 +8,13 @@ use std::sync::mpsc::{Receiver, Sender};
 pub enum InputMode {
     Normal,
     Login,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoginFocus {
+    Username,
+    Password,
+    RememberMe,
 }
 
 #[derive(Debug, Clone)]
@@ -18,6 +26,9 @@ pub enum TreeItem {
 
 pub struct App {
     pub running: bool,
+
+    // Connection info
+    pub base_url: String,
 
     // Channels for API communication
     pub request_tx: Sender<ApiRequest>,
@@ -32,9 +43,11 @@ pub struct App {
 
     // Auth
     pub auth_enabled: bool,
+    pub has_saved_token: bool,
     pub login_username: String,
     pub login_password: String,
-    pub login_focus_password: bool,
+    pub login_focus: LoginFocus,
+    pub login_remember_me: bool,
     pub login_error: Option<String>,
 
     // Data
@@ -53,18 +66,37 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(request_tx: Sender<ApiRequest>, response_rx: Receiver<ApiResponse>) -> Self {
+    pub fn new(
+        base_url: String,
+        request_tx: Sender<ApiRequest>,
+        response_rx: Receiver<ApiResponse>,
+    ) -> Self {
+        // Check for saved token
+        let saved_token = tokens::load_tokens(&base_url);
+        let has_saved_token = saved_token.is_some();
+
+        // If we have a saved token, send it to the API worker
+        if let Some(token_entry) = saved_token {
+            let _ = request_tx.send(ApiRequest::SetToken {
+                auth: token_entry.auth,
+                refresh: token_entry.refresh,
+            });
+        }
+
         Self {
             running: true,
+            base_url,
             request_tx,
             response_rx,
             loading: false,
             pending_init: true,
             input_mode: InputMode::Normal,
             auth_enabled: false,
+            has_saved_token,
             login_username: String::new(),
             login_password: String::new(),
-            login_focus_password: false,
+            login_focus: LoginFocus::Username,
+            login_remember_me: true,
             login_error: None,
             cluster_info: None,
             tiers: Vec::new(),
@@ -99,7 +131,15 @@ impl App {
         let _ = self.request_tx.send(ApiRequest::Login {
             username: self.login_username.clone(),
             password: self.login_password.clone(),
+            remember_me: self.login_remember_me,
         });
+    }
+
+    /// Logout, clear saved tokens, and exit
+    pub fn logout(&mut self) {
+        // Delete tokens directly (don't rely on worker thread)
+        let _ = tokens::delete_tokens(&self.base_url);
+        self.running = false;
     }
 
     /// Process any pending API responses (non-blocking)
@@ -126,8 +166,15 @@ impl App {
                     Ok(config) => {
                         self.auth_enabled = config.is_auth_enabled;
                         if self.auth_enabled {
-                            self.input_mode = InputMode::Login;
-                            self.pending_init = false;
+                            if self.has_saved_token {
+                                // Try using saved token - fetch data directly
+                                // If it fails with 401, we'll show login
+                                self.request_refresh();
+                                self.pending_init = false;
+                            } else {
+                                self.input_mode = InputMode::Login;
+                                self.pending_init = false;
+                            }
                         } else {
                             // No auth needed, request data
                             self.request_refresh();
@@ -162,7 +209,19 @@ impl App {
                         self.last_error = None;
                     }
                     Err(e) => {
-                        self.last_error = Some(format!("Cluster: {}", e));
+                        // Check if this is an auth error (401)
+                        if e.contains("401") || e.to_lowercase().contains("unauthorized") {
+                            if self.has_saved_token {
+                                // Saved token is invalid, need to re-login
+                                self.has_saved_token = false;
+                                self.input_mode = InputMode::Login;
+                                self.login_error = Some("Session expired, please login again".to_string());
+                                // Clear invalid token from disk
+                                let _ = tokens::delete_tokens(&self.base_url);
+                            }
+                        } else {
+                            self.last_error = Some(format!("Cluster: {}", e));
+                        }
                     }
                 }
                 // Check if all data loaded

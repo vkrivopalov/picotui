@@ -1,10 +1,11 @@
 mod api;
 mod app;
 mod models;
+mod tokens;
 mod ui;
 
 use anyhow::{anyhow, Result};
-use app::{App, InputMode};
+use app::{App, InputMode, LoginFocus};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
@@ -85,7 +86,7 @@ fn main() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     // Create app with channels
-    let mut app = App::new(request_tx, response_rx);
+    let mut app = App::new(args.url.clone(), request_tx, response_rx);
 
     // Start initialization (non-blocking)
     app.start_init();
@@ -165,26 +166,60 @@ fn handle_login_input(app: &mut App, key: KeyCode) {
         KeyCode::Esc | KeyCode::Char('q') => {
             app.running = false;
         }
-        KeyCode::Tab => {
-            app.login_focus_password = !app.login_focus_password;
+        KeyCode::Tab | KeyCode::Down => {
+            // Cycle through: Username -> Password -> RememberMe -> Username
+            app.login_focus = match app.login_focus {
+                LoginFocus::Username => LoginFocus::Password,
+                LoginFocus::Password => LoginFocus::RememberMe,
+                LoginFocus::RememberMe => LoginFocus::Username,
+            };
+        }
+        KeyCode::BackTab | KeyCode::Up => {
+            // Cycle backwards
+            app.login_focus = match app.login_focus {
+                LoginFocus::Username => LoginFocus::RememberMe,
+                LoginFocus::Password => LoginFocus::Username,
+                LoginFocus::RememberMe => LoginFocus::Password,
+            };
         }
         KeyCode::Enter => {
-            if !app.login_username.is_empty() && !app.loading {
-                app.request_login();
+            match app.login_focus {
+                LoginFocus::RememberMe => {
+                    // Toggle checkbox
+                    app.login_remember_me = !app.login_remember_me;
+                }
+                _ => {
+                    // Submit login
+                    if !app.login_username.is_empty() && !app.loading {
+                        app.request_login();
+                    }
+                }
             }
         }
+        KeyCode::Char(' ') if app.login_focus == LoginFocus::RememberMe => {
+            // Space toggles checkbox
+            app.login_remember_me = !app.login_remember_me;
+        }
         KeyCode::Backspace => {
-            if app.login_focus_password {
-                app.login_password.pop();
-            } else {
-                app.login_username.pop();
+            match app.login_focus {
+                LoginFocus::Username => {
+                    app.login_username.pop();
+                }
+                LoginFocus::Password => {
+                    app.login_password.pop();
+                }
+                LoginFocus::RememberMe => {}
             }
         }
         KeyCode::Char(c) => {
-            if app.login_focus_password {
-                app.login_password.push(c);
-            } else {
-                app.login_username.push(c);
+            match app.login_focus {
+                LoginFocus::Username => {
+                    app.login_username.push(c);
+                }
+                LoginFocus::Password => {
+                    app.login_password.push(c);
+                }
+                LoginFocus::RememberMe => {}
             }
         }
         _ => {}
@@ -226,6 +261,12 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
         KeyCode::Char('r') => {
             if !app.loading {
                 app.request_refresh();
+            }
+        }
+        KeyCode::Char('X') => {
+            // Logout (capital X to avoid accidental logout)
+            if app.auth_enabled {
+                app.logout();
             }
         }
         _ => {}

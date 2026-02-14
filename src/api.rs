@@ -1,4 +1,5 @@
 use crate::models::*;
+use crate::tokens;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::time::Duration;
@@ -7,7 +8,12 @@ use std::time::Duration;
 #[derive(Debug)]
 pub enum ApiRequest {
     GetConfig,
-    Login { username: String, password: String },
+    Login {
+        username: String,
+        password: String,
+        remember_me: bool,
+    },
+    SetToken { auth: String, refresh: String },
     GetClusterInfo,
     GetTiers,
     Shutdown,
@@ -67,9 +73,13 @@ pub fn spawn_api_worker(
                     let _ = response_tx.send(ApiResponse::Config(response));
                 }
 
-                ApiRequest::Login { username, password } => {
+                ApiRequest::Login {
+                    username,
+                    password,
+                    remember_me,
+                } => {
                     let url = format!("{}/api/v1/session", base_url);
-                    log_debug(debug, &format!("POST {} (user={})", url, username));
+                    log_debug(debug, &format!("POST {} (user={}, remember={})", url, username, remember_me));
 
                     let req_body = LoginRequest { username, password };
                     let result = client
@@ -79,10 +89,26 @@ pub fn spawn_api_worker(
 
                     let response = match result {
                         Ok(resp) => match resp.into_body().read_json::<TokenResponse>() {
-                            Ok(tokens) => {
+                            Ok(token_resp) => {
                                 log_debug(debug, "  OK: tokens received");
-                                auth_token = Some(tokens.auth.clone());
-                                Ok(tokens)
+                                auth_token = Some(token_resp.auth.clone());
+
+                                // Save tokens to disk only if remember_me is enabled
+                                if remember_me {
+                                    if let Err(e) = tokens::save_tokens(
+                                        &base_url,
+                                        &token_resp.auth,
+                                        &token_resp.refresh,
+                                    ) {
+                                        log_debug(debug, &format!("  WARN: failed to save tokens: {}", e));
+                                    } else {
+                                        log_debug(debug, "  OK: tokens saved to disk");
+                                    }
+                                } else {
+                                    log_debug(debug, "  OK: tokens not saved (remember_me=false)");
+                                }
+
+                                Ok(token_resp)
                             }
                             Err(e) => {
                                 log_debug(debug, &format!("  PARSE ERROR: {}", e));
@@ -100,6 +126,16 @@ pub fn spawn_api_worker(
                         }
                     };
                     let _ = response_tx.send(ApiResponse::Login(response));
+                }
+
+                ApiRequest::SetToken { auth, refresh } => {
+                    log_debug(debug, "Setting token from saved session");
+                    auth_token = Some(auth.clone());
+
+                    // Also update saved tokens with potentially refreshed values
+                    if let Err(e) = tokens::save_tokens(&base_url, &auth, &refresh) {
+                        log_debug(debug, &format!("  WARN: failed to update saved tokens: {}", e));
+                    }
                 }
 
                 ApiRequest::GetClusterInfo => {

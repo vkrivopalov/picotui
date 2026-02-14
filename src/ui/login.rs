@@ -1,5 +1,5 @@
 use super::centered_rect;
-use crate::app::App;
+use crate::app::{App, LoginFocus};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -14,7 +14,7 @@ pub fn draw_login(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(bg, area);
 
     // Draw centered login box
-    let popup_area = centered_rect(50, 50, area);
+    let popup_area = centered_rect(50, 60, area);
     frame.render_widget(Clear, popup_area);
 
     let block = Block::default()
@@ -31,6 +31,7 @@ pub fn draw_login(frame: &mut Frame, app: &App, area: Rect) {
             Constraint::Length(2), // Title/instructions
             Constraint::Length(3), // Username field
             Constraint::Length(3), // Password field
+            Constraint::Length(2), // Remember me checkbox
             Constraint::Length(2), // Error message
             Constraint::Length(2), // Submit hint
             Constraint::Min(0),    // Padding
@@ -46,7 +47,7 @@ pub fn draw_login(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(instructions, chunks[0]);
 
     // Username field
-    let username_style = if !app.login_focus_password {
+    let username_style = if app.login_focus == LoginFocus::Username {
         Style::default().fg(Color::Yellow)
     } else {
         Style::default().fg(Color::White)
@@ -64,7 +65,7 @@ pub fn draw_login(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(username_text, username_inner);
 
     // Show cursor in username field
-    if !app.login_focus_password {
+    if app.login_focus == LoginFocus::Username {
         frame.set_cursor_position((
             username_inner.x + app.login_username.len() as u16,
             username_inner.y,
@@ -72,7 +73,7 @@ pub fn draw_login(frame: &mut Frame, app: &App, area: Rect) {
     }
 
     // Password field
-    let password_style = if app.login_focus_password {
+    let password_style = if app.login_focus == LoginFocus::Password {
         Style::default().fg(Color::Yellow)
     } else {
         Style::default().fg(Color::White)
@@ -91,12 +92,35 @@ pub fn draw_login(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(password_text, password_inner);
 
     // Show cursor in password field
-    if app.login_focus_password {
+    if app.login_focus == LoginFocus::Password {
         frame.set_cursor_position((
             password_inner.x + app.login_password.len() as u16,
             password_inner.y,
         ));
     }
+
+    // Remember me checkbox
+    let checkbox_focused = app.login_focus == LoginFocus::RememberMe;
+    let checkbox_style = if checkbox_focused {
+        Style::default().fg(Color::Yellow)
+    } else {
+        Style::default().fg(Color::White)
+    };
+
+    let checkbox_char = if app.login_remember_me { "[x]" } else { "[ ]" };
+    let checkbox_line = Line::from(vec![
+        Span::styled(
+            if checkbox_focused { "> " } else { "  " },
+            checkbox_style,
+        ),
+        Span::styled(checkbox_char, checkbox_style),
+        Span::styled(" Remember me", checkbox_style),
+        Span::styled(
+            " (save login session)",
+            Style::default().fg(Color::DarkGray),
+        ),
+    ]);
+    frame.render_widget(Paragraph::new(checkbox_line), chunks[3]);
 
     // Error message
     if let Some(ref error) = app.login_error {
@@ -104,17 +128,19 @@ pub fn draw_login(frame: &mut Frame, app: &App, area: Rect) {
             error.as_str(),
             Style::default().fg(Color::Red),
         )]));
-        frame.render_widget(error_msg, chunks[3]);
+        frame.render_widget(error_msg, chunks[4]);
     }
 
     // Submit hint
     let hint = Paragraph::new(Line::from(vec![
-        Span::styled("Tab", Style::default().fg(Color::Yellow)),
-        Span::raw(" switch field  "),
+        Span::styled("Tab/↑↓", Style::default().fg(Color::Yellow)),
+        Span::raw(" navigate  "),
+        Span::styled("Space", Style::default().fg(Color::Yellow)),
+        Span::raw(" toggle  "),
         Span::styled("Enter", Style::default().fg(Color::Yellow)),
         Span::raw(" login  "),
-        Span::styled("Esc/q", Style::default().fg(Color::Yellow)),
+        Span::styled("Esc", Style::default().fg(Color::Yellow)),
         Span::raw(" quit"),
     ]));
-    frame.render_widget(hint, chunks[4]);
+    frame.render_widget(hint, chunks[5]);
 }

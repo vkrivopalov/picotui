@@ -168,25 +168,29 @@ fn draw_replicasets_view(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_instances_view(frame: &mut Frame, app: &App, area: Rect) {
+    // Build title with sort indicator
+    let sort_indicator = format!(
+        " Sort: {} {} ",
+        app.sort_field.label(),
+        app.sort_order.arrow()
+    );
+
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(" Instances ");
+        .title(" Instances ")
+        .title_bottom(
+            Line::from(vec![Span::styled(
+                sort_indicator,
+                Style::default().fg(Color::Cyan),
+            )])
+            .right_aligned(),
+        );
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    // Collect all instances from all tiers/replicasets
-    let instances: Vec<(&str, &str, &InstanceInfo)> = app
-        .tiers
-        .iter()
-        .flat_map(|tier| {
-            tier.replicasets.iter().flat_map(move |rs| {
-                rs.instances
-                    .iter()
-                    .map(move |inst| (tier.name.as_str(), rs.name.as_str(), inst))
-            })
-        })
-        .collect();
+    // Get sorted instances
+    let instances = app.get_sorted_instances();
 
     if instances.is_empty() {
         let msg = Paragraph::new("No instances found. Press 'r' to refresh.");

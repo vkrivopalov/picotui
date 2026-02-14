@@ -290,6 +290,20 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
             app.view_mode = ViewMode::Instances;
             app.selected_index = 0;
         }
+        KeyCode::Char('s') => {
+            // Cycle sort field (only in instances view)
+            if app.view_mode == ViewMode::Instances {
+                app.sort_field = app.sort_field.cycle_next();
+                app.selected_index = 0;
+            }
+        }
+        KeyCode::Char('S') => {
+            // Toggle sort order (only in instances view)
+            if app.view_mode == ViewMode::Instances {
+                app.sort_order = app.sort_order.toggle();
+                app.selected_index = 0;
+            }
+        }
         _ => {}
     }
 }

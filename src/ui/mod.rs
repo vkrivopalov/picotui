@@ -79,6 +79,15 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     spans.push(Span::raw(" Details  "));
     spans.push(Span::styled("g", Style::default().fg(Color::Yellow)));
     spans.push(Span::raw(" View  "));
+
+    // Show sort options in Instances view
+    if app.view_mode == ViewMode::Instances {
+        spans.push(Span::styled("s", Style::default().fg(Color::Yellow)));
+        spans.push(Span::raw(" Sort  "));
+        spans.push(Span::styled("S", Style::default().fg(Color::Yellow)));
+        spans.push(Span::raw(" Order  "));
+    }
+
     spans.push(Span::styled("r", Style::default().fg(Color::Yellow)));
     spans.push(Span::raw(" Refresh  "));
 

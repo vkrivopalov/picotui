@@ -43,6 +43,52 @@ impl ViewMode {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SortField {
+    #[default]
+    Name,
+    FailureDomain,
+}
+
+impl SortField {
+    pub fn cycle_next(self) -> Self {
+        match self {
+            SortField::Name => SortField::FailureDomain,
+            SortField::FailureDomain => SortField::Name,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            SortField::Name => "Name",
+            SortField::FailureDomain => "Domain",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SortOrder {
+    #[default]
+    Asc,
+    Desc,
+}
+
+impl SortOrder {
+    pub fn toggle(self) -> Self {
+        match self {
+            SortOrder::Asc => SortOrder::Desc,
+            SortOrder::Desc => SortOrder::Asc,
+        }
+    }
+
+    pub fn arrow(self) -> &'static str {
+        match self {
+            SortOrder::Asc => "↑",
+            SortOrder::Desc => "↓",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum TreeItem {
     Tier(usize),
@@ -93,6 +139,10 @@ pub struct App {
 
     // View mode
     pub view_mode: ViewMode,
+
+    // Sorting (instances view)
+    pub sort_field: SortField,
+    pub sort_order: SortOrder,
 }
 
 impl App {
@@ -138,6 +188,8 @@ impl App {
             selected_index: 0,
             show_detail: false,
             view_mode: ViewMode::default(),
+            sort_field: SortField::default(),
+            sort_order: SortOrder::default(),
         }
     }
 
@@ -418,15 +470,73 @@ impl App {
             }
             ViewMode::Replicasets => None, // Can't select instance in replicasets view
             ViewMode::Instances => {
-                // Flatten all instances and get by index
-                let instances: Vec<&InstanceInfo> = self
-                    .tiers
-                    .iter()
-                    .flat_map(|t| t.replicasets.iter().flat_map(|r| r.instances.iter()))
-                    .collect();
-                instances.get(self.selected_index).copied()
+                // Get sorted instances and select by index
+                let instances = self.get_sorted_instances();
+                instances.get(self.selected_index).map(|(_, _, inst)| *inst)
             }
         }
+    }
+
+    /// Get sorted instances for Instances view
+    pub fn get_sorted_instances(&self) -> Vec<(&str, &str, &InstanceInfo)> {
+        let mut instances: Vec<(&str, &str, &InstanceInfo)> = self
+            .tiers
+            .iter()
+            .flat_map(|tier| {
+                tier.replicasets.iter().flat_map(move |rs| {
+                    rs.instances
+                        .iter()
+                        .map(move |inst| (tier.name.as_str(), rs.name.as_str(), inst))
+                })
+            })
+            .collect();
+
+        // Sort based on current sort settings
+        match self.sort_field {
+            SortField::Name => {
+                instances.sort_by(|a, b| {
+                    let cmp = a.2.name.cmp(&b.2.name);
+                    if self.sort_order == SortOrder::Desc {
+                        cmp.reverse()
+                    } else {
+                        cmp
+                    }
+                });
+            }
+            SortField::FailureDomain => {
+                instances.sort_by(|a, b| {
+                    let domain_a = Self::format_failure_domain(&a.2.failure_domain);
+                    let domain_b = Self::format_failure_domain(&b.2.failure_domain);
+                    let cmp = domain_a.cmp(&domain_b);
+                    // If domains are equal, sort by name
+                    let cmp = if cmp == std::cmp::Ordering::Equal {
+                        a.2.name.cmp(&b.2.name)
+                    } else {
+                        cmp
+                    };
+                    if self.sort_order == SortOrder::Desc {
+                        cmp.reverse()
+                    } else {
+                        cmp
+                    }
+                });
+            }
+        }
+
+        instances
+    }
+
+    fn format_failure_domain(domain: &std::collections::HashMap<String, String>) -> String {
+        if domain.is_empty() {
+            return String::new();
+        }
+        let mut pairs: Vec<_> = domain.iter().collect();
+        pairs.sort_by(|a, b| a.0.cmp(b.0));
+        pairs
+            .iter()
+            .map(|(k, v)| format!("{}:{}", k, v))
+            .collect::<Vec<_>>()
+            .join(", ")
     }
 
     /// Get the total number of items in the current view

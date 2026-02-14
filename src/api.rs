@@ -116,8 +116,12 @@ pub fn spawn_api_worker(
                             }
                         },
                         Err(ureq::Error::StatusCode(status)) => {
-                            let msg = format!("Login failed: HTTP {}", status);
-                            log_debug(debug, &format!("  ERROR: {}", msg));
+                            let msg = if status == 401 {
+                                "Invalid username or password. Try again.".to_string()
+                            } else {
+                                format!("Login failed: HTTP {}", status)
+                            };
+                            log_debug(debug, &format!("  ERROR: HTTP {}", status));
                             Err(msg)
                         }
                         Err(e) => {

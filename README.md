@@ -1,6 +1,9 @@
 # picotui
 
-Terminal UI for Picodata cluster management, built with [ratatui](https://ratatui.rs/).
+[![CI](https://github.com/vkrivopalov/picotui/actions/workflows/ci.yml/badge.svg)](https://github.com/vkrivopalov/picotui/actions/workflows/ci.yml)
+[![License: BSL-1.0](https://img.shields.io/badge/License-BSL--1.0-blue.svg)](https://opensource.org/licenses/BSL-1.0)
+
+Terminal UI for [Picodata](https://picodata.io/en/) cluster management, built with [ratatui](https://ratatui.rs/).
 
 ## Features
 
@@ -17,12 +20,20 @@ Terminal UI for Picodata cluster management, built with [ratatui](https://ratatu
 
 ## Installation
 
+### From source
+
 ```bash
+git clone https://github.com/vkrivopalov/picotui.git
 cd picotui
 cargo build --release
 ```
 
 The binary will be at `target/release/picotui`.
+
+### Requirements
+
+- Rust 1.70+ (for building from source)
+- A running [Picodata](https://picodata.io/en/) cluster with HTTP API enabled
 
 ## Usage
 
@@ -39,6 +50,16 @@ picotui --url http://localhost:8080 --refresh 0
 # Enable debug logging (writes to picotui.log)
 picotui --url http://localhost:8080 --debug
 ```
+
+### Command-line Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-u`, `--url` | Picodata HTTP API URL | `http://localhost:8080` |
+| `-r`, `--refresh` | Auto-refresh interval in seconds (0 to disable) | `5` |
+| `-d`, `--debug` | Enable debug logging to `picotui.log` | off |
+| `-h`, `--help` | Show help message | |
+| `-V`, `--version` | Show version | |
 
 ## Keyboard Shortcuts
 
@@ -130,7 +151,7 @@ picotui --url http://localhost:8080 --debug
 
 ## View Modes
 
-Picotui offers three different ways to view your cluster data, similar to the Picodata web UI:
+Picotui offers three different ways to view your cluster data, similar to the [Picodata](https://picodata.io/en/) web UI:
 
 ### Tiers View (default)
 
@@ -189,7 +210,7 @@ Press `Enter` to apply the filter and continue navigating. Press `Esc` to clear 
 
 ## API Endpoints Used
 
-The TUI connects to these Picodata HTTP API endpoints:
+The TUI connects to these [Picodata](https://picodata.io/en/) HTTP API endpoints:
 
 - `GET /api/v1/config` - Check if authentication is enabled
 - `POST /api/v1/session` - Login with username/password
@@ -201,9 +222,11 @@ The TUI connects to these Picodata HTTP API endpoints:
 
 When "Remember me" is checked during login (enabled by default), your session token is saved locally:
 
-- **Linux/FreeBSD**: `~/.config/picotui/tokens.json`
-- **macOS**: `~/Library/Application Support/picotui/tokens.json`
-- **Windows**: `%APPDATA%\picotui\tokens.json`
+| Platform | Token Location |
+|----------|----------------|
+| Linux/FreeBSD | `~/.config/picotui/tokens.json` |
+| macOS | `~/Library/Application Support/picotui/tokens.json` |
+| Windows | `%APPDATA%\picotui\tokens.json` |
 
 On next launch, picotui will automatically use the saved token, skipping the login screen.
 
@@ -220,6 +243,10 @@ picotui --url http://localhost:8081 --debug
 tail -f picotui.log
 ```
 
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
+
 ## License
 
-BSL-1.0 (Boost Software License 1.0)
+[BSL-1.0](LICENSE) (Boost Software License 1.0)

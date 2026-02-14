@@ -1,5 +1,8 @@
 # picotui
 
+[![en](https://img.shields.io/badge/lang-en-red.svg)](README.md)
+[![ru](https://img.shields.io/badge/lang-ru-green.svg)](README.ru.md)
+
 [![CI](https://github.com/vkrivopalov/picotui/actions/workflows/ci.yml/badge.svg)](https://github.com/vkrivopalov/picotui/actions/workflows/ci.yml)
 [![License: BSL-1.0](https://img.shields.io/badge/License-BSL--1.0-blue.svg)](https://opensource.org/licenses/BSL-1.0)
 

@@ -115,6 +115,8 @@ picotui --url http://localhost:8080 --debug
 
 ## Screenshots
 
+![picotui screenshot](images/picotui.png)
+
 ### Tiers View (hierarchical tree)
 ```
 ┌─ picotui - Picodata Cluster Monitor ────────────────────────[Tiers]─┐

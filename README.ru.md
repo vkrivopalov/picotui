@@ -3,10 +3,17 @@
 [![en](https://img.shields.io/badge/lang-en-red.svg)](README.md)
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](README.ru.md)
 
+[![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](https://github.com/vkrivopalov/picotui/releases)
 [![CI](https://github.com/vkrivopalov/picotui/actions/workflows/ci.yml/badge.svg)](https://github.com/vkrivopalov/picotui/actions/workflows/ci.yml)
 [![License: BSL-1.0](https://img.shields.io/badge/License-BSL--1.0-blue.svg)](https://opensource.org/licenses/BSL-1.0)
 
 Терминальный интерфейс для управления кластером [Picodata](https://picodata.io/), построенный на базе [ratatui](https://ratatui.rs/).
+
+## Версионирование
+
+Picotui следует [SemVer](https://semver.org/). Каждый релиз указывает версию Picodata, с которой он совместим.
+
+Текущая версия **0.1.0** совместима с **Picodata 25.5**.
 
 ## Возможности
 

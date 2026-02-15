@@ -3,10 +3,17 @@
 [![en](https://img.shields.io/badge/lang-en-red.svg)](README.md)
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](README.ru.md)
 
+[![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](https://github.com/vkrivopalov/picotui/releases)
 [![CI](https://github.com/vkrivopalov/picotui/actions/workflows/ci.yml/badge.svg)](https://github.com/vkrivopalov/picotui/actions/workflows/ci.yml)
 [![License: BSL-1.0](https://img.shields.io/badge/License-BSL--1.0-blue.svg)](https://opensource.org/licenses/BSL-1.0)
 
 Terminal UI for [Picodata](https://picodata.io/en/) cluster management, built with [ratatui](https://ratatui.rs/).
+
+## Versioning
+
+Picotui follows [SemVer](https://semver.org/). Each release specifies the Picodata version it is compatible with.
+
+Current version **0.1.0** is compatible with **Picodata 25.5**.
 
 ## Features
 

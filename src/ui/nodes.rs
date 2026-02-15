@@ -10,6 +10,44 @@ use ratatui::{
     Frame,
 };
 
+/// Helper to create spans with filter match highlighting
+fn highlight_match(text: &str, filter: &str, base_style: Style) -> Vec<Span<'static>> {
+    if filter.is_empty() {
+        return vec![Span::styled(text.to_string(), base_style)];
+    }
+
+    let filter_lower = filter.to_lowercase();
+    let text_lower = text.to_lowercase();
+
+    let mut spans = Vec::new();
+    let mut last_end = 0;
+
+    for (start, _) in text_lower.match_indices(&filter_lower) {
+        // Add text before match
+        if start > last_end {
+            spans.push(Span::styled(text[last_end..start].to_string(), base_style));
+        }
+        // Add highlighted match
+        let end = start + filter.len();
+        spans.push(Span::styled(
+            text[start..end].to_string(),
+            base_style.bg(Color::Yellow).fg(Color::Black),
+        ));
+        last_end = end;
+    }
+
+    // Add remaining text after last match
+    if last_end < text.len() {
+        spans.push(Span::styled(text[last_end..].to_string(), base_style));
+    }
+
+    if spans.is_empty() {
+        vec![Span::styled(text.to_string(), base_style)]
+    } else {
+        spans
+    }
+}
+
 pub fn draw_nodes(frame: &mut Frame, app: &App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -226,6 +264,8 @@ fn draw_instances_view(frame: &mut Frame, app: &App, area: Rect) {
         return;
     }
 
+    let filter = &app.filter_text;
+
     let items: Vec<ListItem> = instances
         .iter()
         .enumerate()
@@ -250,27 +290,47 @@ fn draw_instances_view(frame: &mut Frame, app: &App, area: Rect) {
                     .join(", ")
             };
 
-            let line = Line::from(vec![
-                Span::styled(leader_marker, Style::default().fg(Color::Yellow)),
-                Span::styled(inst.name.clone(), Style::default().fg(Color::White)),
-                Span::raw(" ["),
-                Span::styled(inst.current_state.to_string(), state_style),
-                Span::raw("]  "),
-                Span::styled("RS:", Style::default().fg(Color::Gray)),
-                Span::raw(format!(" {}  ", rs_name)),
-                Span::styled(
-                    inst.binary_address.clone(),
-                    Style::default().fg(Color::Gray),
-                ),
-                if !failure_domain_str.is_empty() {
-                    Span::styled(
-                        format!("  {}", failure_domain_str),
-                        Style::default().fg(Color::DarkGray),
-                    )
-                } else {
-                    Span::raw("")
-                },
-            ]);
+            // Build line with highlighted matches
+            let mut spans = vec![Span::styled(
+                leader_marker,
+                Style::default().fg(Color::Yellow),
+            )];
+
+            // Instance name (with highlighting)
+            spans.extend(highlight_match(
+                &inst.name,
+                filter,
+                Style::default().fg(Color::White),
+            ));
+
+            spans.push(Span::raw(" ["));
+            spans.push(Span::styled(inst.current_state.to_string(), state_style));
+            spans.push(Span::raw("]  "));
+            spans.push(Span::styled("RS:", Style::default().fg(Color::Gray)));
+            spans.push(Span::raw(" "));
+
+            // Replicaset name (with highlighting)
+            spans.extend(highlight_match(rs_name, filter, Style::default()));
+            spans.push(Span::raw("  "));
+
+            // Binary address (with highlighting)
+            spans.extend(highlight_match(
+                &inst.binary_address,
+                filter,
+                Style::default().fg(Color::Gray),
+            ));
+
+            // Failure domain (with highlighting)
+            if !failure_domain_str.is_empty() {
+                spans.push(Span::raw("  "));
+                spans.extend(highlight_match(
+                    &failure_domain_str,
+                    filter,
+                    Style::default().fg(Color::DarkGray),
+                ));
+            }
+
+            let line = Line::from(spans);
 
             let style = if is_selected {
                 Style::default()

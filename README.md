@@ -9,6 +9,14 @@
 
 Terminal UI for [Picodata](https://picodata.io/en/) cluster management, built with [ratatui](https://ratatui.rs/).
 
+## Why picotui?
+
+**Feature parity and beyond** — Picotui provides the same cluster monitoring capabilities as the Picodata WebUI, including hierarchical views of tiers, replicasets, and instances, plus additional features like flexible text-based filtering with match highlighting that searches across instance names, addresses, and failure domains simultaneously.
+
+**Works without WebUI** — Picotui connects directly to the Picodata HTTP API, so it works with Picodata installations built without `--features webui`. Perfect for minimal deployments or headless servers.
+
+**Lightweight and fast** — Built with minimal dependencies using synchronous I/O (`ureq` instead of `tokio`/`reqwest`) and lightweight argument parsing (`pico-args` instead of `clap`). The stripped binary is only ~3.5 MB with no runtime dependencies beyond libc.
+
 ## Versioning
 
 Picotui follows [SemVer](https://semver.org/). Each release specifies the Picodata version it is compatible with.

@@ -304,6 +304,7 @@ impl App {
                             if self.has_saved_token {
                                 // Saved token is invalid, need to re-login
                                 self.has_saved_token = false;
+                                self.loading = false;
                                 self.input_mode = InputMode::Login;
                                 self.login_error =
                                     Some("Session expired, please login again".to_string());
@@ -326,6 +327,20 @@ impl App {
                         self.rebuild_tree();
                     }
                     Err(e) => {
+                        // Check if this is an auth error (401)
+                        if (e.contains("401") || e.to_lowercase().contains("unauthorized"))
+                            && self.has_saved_token
+                        {
+                            // Saved token is invalid, need to re-login
+                            self.has_saved_token = false;
+                            self.loading = false;
+                            self.input_mode = InputMode::Login;
+                            self.login_error =
+                                Some("Session expired, please login again".to_string());
+                            // Clear invalid token from disk
+                            let _ = tokens::delete_tokens(&self.base_url);
+                            return;
+                        }
                         if self.last_error.is_none() {
                             self.last_error = Some(format!("Tiers: {}", e));
                         }
@@ -578,5 +593,94 @@ impl App {
 
     pub fn shutdown(&self) {
         let _ = self.request_tx.send(ApiRequest::Shutdown);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc::channel;
+
+    /// Create a test app with saved token state
+    fn test_app_with_saved_token() -> App {
+        let (req_tx, _req_rx) = channel();
+        let (_res_tx, res_rx) = channel();
+        let mut app = App::new("http://test:8080".to_string(), req_tx, res_rx);
+        app.has_saved_token = true;
+        app.loading = true;
+        app.auth_enabled = true;
+        app.input_mode = InputMode::Normal;
+        app
+    }
+
+    #[test]
+    fn test_401_error_on_cluster_info_allows_relogin() {
+        let mut app = test_app_with_saved_token();
+
+        // Simulate receiving a 401 error from ClusterInfo
+        app.handle_response(ApiResponse::ClusterInfo(Err(
+            "HTTP 401 Unauthorized".to_string()
+        )));
+
+        // Verify the app is ready for login
+        assert!(
+            !app.loading,
+            "loading should be false to allow login submission"
+        );
+        assert!(!app.has_saved_token, "has_saved_token should be cleared");
+        assert_eq!(
+            app.input_mode,
+            InputMode::Login,
+            "should switch to login mode"
+        );
+        assert!(app.login_error.is_some(), "should have login error message");
+        assert!(
+            app.login_error
+                .as_ref()
+                .unwrap()
+                .contains("Session expired"),
+            "error should mention session expired"
+        );
+    }
+
+    #[test]
+    fn test_401_error_on_tiers_allows_relogin() {
+        let mut app = test_app_with_saved_token();
+
+        // Simulate receiving a 401 error from Tiers
+        app.handle_response(ApiResponse::Tiers(Err("HTTP 401 Unauthorized".to_string())));
+
+        // Verify the app is ready for login
+        assert!(
+            !app.loading,
+            "loading should be false to allow login submission"
+        );
+        assert!(!app.has_saved_token, "has_saved_token should be cleared");
+        assert_eq!(
+            app.input_mode,
+            InputMode::Login,
+            "should switch to login mode"
+        );
+        assert!(app.login_error.is_some(), "should have login error message");
+    }
+
+    #[test]
+    fn test_non_401_error_does_not_trigger_relogin() {
+        let mut app = test_app_with_saved_token();
+
+        // Simulate receiving a non-401 error
+        app.handle_response(ApiResponse::ClusterInfo(Err(
+            "HTTP 500 Internal Server Error".to_string(),
+        )));
+
+        // Should NOT switch to login mode
+        assert!(app.has_saved_token, "has_saved_token should remain true");
+        assert_eq!(
+            app.input_mode,
+            InputMode::Normal,
+            "should stay in normal mode"
+        );
+        assert!(app.login_error.is_none(), "should not have login error");
+        assert!(app.last_error.is_some(), "should have last_error set");
     }
 }

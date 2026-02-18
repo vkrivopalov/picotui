@@ -304,25 +304,25 @@ impl App {
                         self.last_error = None;
                     }
                     Err(e) => {
-                        // Check if this is an auth error (401)
-                        if e.contains("401") || e.to_lowercase().contains("unauthorized") {
-                            if self.has_saved_token {
-                                // Saved token is invalid, need to re-login
-                                self.has_saved_token = false;
-                                self.loading = false;
-                                self.input_mode = InputMode::Login;
-                                self.login_error =
-                                    Some("Session expired, please login again".to_string());
-                                // Clear invalid token from disk
-                                let _ = tokens::delete_tokens(&self.base_url);
-                            }
-                        } else {
-                            self.last_error = Some(format!("Cluster: {}", e));
+                        // Check if this is an auth error (401) with saved token
+                        if (e.contains("401") || e.to_lowercase().contains("unauthorized"))
+                            && self.has_saved_token
+                        {
+                            // Saved token is invalid, need to re-login
+                            self.has_saved_token = false;
+                            self.loading = false;
+                            self.input_mode = InputMode::Login;
+                            self.login_error =
+                                Some("Session expired, please login again".to_string());
+                            // Clear invalid token from disk
+                            let _ = tokens::delete_tokens(&self.base_url);
+                            return;
                         }
+                        self.last_error = Some(format!("Cluster: {}", e));
                     }
                 }
-                // Check if all data loaded
-                self.check_loading_complete();
+                // Mark loading complete - error will be shown in status bar
+                self.loading = false;
             }
 
             ApiResponse::Tiers(result) => {
@@ -351,16 +351,9 @@ impl App {
                         }
                     }
                 }
-                // Check if all data loaded
-                self.check_loading_complete();
+                // Mark loading complete - error will be shown in status bar
+                self.loading = false;
             }
-        }
-    }
-
-    fn check_loading_complete(&mut self) {
-        // Simple heuristic: loading complete when we have cluster info
-        if self.cluster_info.is_some() {
-            self.loading = false;
         }
     }
 

@@ -130,7 +130,7 @@ fn run_app(
         app.process_responses();
 
         // Draw UI
-        terminal.draw(|f| ui::draw(f, app))?;
+        terminal.draw(|f| ui::draw(f, &mut *app))?;
 
         // Poll for keyboard input with short timeout for responsiveness
         let timeout = Duration::from_millis(50);
@@ -234,6 +234,9 @@ fn handle_detail_input(app: &mut App, key: KeyCode) {
     }
 }
 
+// Default visible height for page navigation (will be overridden by actual terminal size)
+const DEFAULT_PAGE_HEIGHT: usize = 20;
+
 fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
     // Handle filter input mode
     if app.filter_active {
@@ -242,7 +245,7 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
                 // Clear filter and exit filter mode
                 app.filter_text.clear();
                 app.filter_active = false;
-                app.selected_index = 0;
+                app.reset_selection();
             }
             KeyCode::Enter => {
                 // Exit filter mode but keep filter
@@ -250,11 +253,11 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
             }
             KeyCode::Backspace => {
                 app.filter_text.pop();
-                app.selected_index = 0;
+                app.reset_selection();
             }
             KeyCode::Char(c) => {
                 app.filter_text.push(c);
-                app.selected_index = 0;
+                app.reset_selection();
             }
             _ => {}
         }
@@ -268,6 +271,7 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
         KeyCode::Char('c') if modifiers.contains(KeyModifiers::CONTROL) => {
             app.running = false;
         }
+        // Basic navigation
         KeyCode::Up | KeyCode::Char('k') => {
             app.select_previous();
         }
@@ -280,6 +284,38 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
         KeyCode::Left | KeyCode::Char('h') => {
             app.collapse_selected();
         }
+        // Vim-style navigation
+        KeyCode::Home => {
+            // Go to first item
+            app.select_first();
+        }
+        KeyCode::End => {
+            // Go to last item
+            app.select_last();
+        }
+        KeyCode::Char('d') if modifiers.contains(KeyModifiers::CONTROL) => {
+            // Half page down (Ctrl+D)
+            app.select_half_page_down(DEFAULT_PAGE_HEIGHT);
+        }
+        KeyCode::Char('u') if modifiers.contains(KeyModifiers::CONTROL) => {
+            // Half page up (Ctrl+U)
+            app.select_half_page_up(DEFAULT_PAGE_HEIGHT);
+        }
+        KeyCode::Char('f') if modifiers.contains(KeyModifiers::CONTROL) => {
+            // Full page down (Ctrl+F)
+            app.select_page_down(DEFAULT_PAGE_HEIGHT);
+        }
+        KeyCode::Char('b') if modifiers.contains(KeyModifiers::CONTROL) => {
+            // Full page up (Ctrl+B)
+            app.select_page_up(DEFAULT_PAGE_HEIGHT);
+        }
+        KeyCode::PageDown => {
+            app.select_page_down(DEFAULT_PAGE_HEIGHT);
+        }
+        KeyCode::PageUp => {
+            app.select_page_up(DEFAULT_PAGE_HEIGHT);
+        }
+        // Actions
         KeyCode::Enter => {
             app.toggle_detail();
         }
@@ -294,45 +330,48 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
                 app.logout();
             }
         }
+        // View modes
         KeyCode::Char('g') => {
             // Cycle view mode and clear filter
             app.view_mode = app.view_mode.cycle_next();
             app.filter_text.clear();
             app.filter_active = false;
-            app.selected_index = 0;
+            app.reset_selection();
         }
         KeyCode::Char('1') => {
             app.view_mode = ViewMode::Tiers;
             app.filter_text.clear();
             app.filter_active = false;
-            app.selected_index = 0;
+            app.reset_selection();
         }
         KeyCode::Char('2') => {
             app.view_mode = ViewMode::Replicasets;
             app.filter_text.clear();
             app.filter_active = false;
-            app.selected_index = 0;
+            app.reset_selection();
         }
         KeyCode::Char('3') => {
             app.view_mode = ViewMode::Instances;
             app.filter_text.clear();
             app.filter_active = false;
-            app.selected_index = 0;
+            app.reset_selection();
         }
+        // Sorting
         KeyCode::Char('s') => {
             // Cycle sort field (only in instances view)
             if app.view_mode == ViewMode::Instances {
                 app.sort_field = app.sort_field.cycle_next();
-                app.selected_index = 0;
+                app.reset_selection();
             }
         }
         KeyCode::Char('S') => {
             // Toggle sort order (only in instances view)
             if app.view_mode == ViewMode::Instances {
                 app.sort_order = app.sort_order.toggle();
-                app.selected_index = 0;
+                app.reset_selection();
             }
         }
+        // Filtering
         KeyCode::Char('/') => {
             // Start filter mode (only in instances view)
             if app.view_mode == ViewMode::Instances {

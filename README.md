@@ -88,6 +88,12 @@ picotui --url http://localhost:8080 --debug
 | `↓` / `j` | Move selection down |
 | `→` / `l` | Expand selected item (Tiers view) |
 | `←` / `h` | Collapse selected item (Tiers view) |
+| `Home` | Jump to first item |
+| `End` | Jump to last item |
+| `Ctrl+D` | Half page down |
+| `Ctrl+U` | Half page up |
+| `Ctrl+F` / `PageDown` | Full page down |
+| `Ctrl+B` / `PageUp` | Full page up |
 | `Enter` | Show instance details |
 
 ### View Modes

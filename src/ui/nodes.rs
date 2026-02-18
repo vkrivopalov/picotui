@@ -48,7 +48,7 @@ fn highlight_match(text: &str, filter: &str, base_style: Style) -> Vec<Span<'sta
     }
 }
 
-pub fn draw_nodes(frame: &mut Frame, app: &App, area: Rect) {
+pub fn draw_nodes(frame: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -83,11 +83,11 @@ pub fn draw_nodes(frame: &mut Frame, app: &App, area: Rect) {
     }
 }
 
-fn draw_tiers_view(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_tiers_view(frame: &mut Frame, app: &mut App, area: Rect) {
     draw_tree(frame, app, area);
 }
 
-fn draw_tree(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_tree(frame: &mut Frame, app: &mut App, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
         .title(" Tiers / Replicasets / Instances ");
@@ -129,11 +129,15 @@ fn draw_tree(frame: &mut Frame, app: &App, area: Rect) {
         })
         .collect();
 
-    let list = List::new(items);
-    frame.render_widget(list, inner);
+    let list = List::new(items).highlight_style(
+        Style::default()
+            .bg(Color::DarkGray)
+            .add_modifier(Modifier::BOLD),
+    );
+    frame.render_stateful_widget(list, inner, &mut app.list_state);
 }
 
-fn draw_replicasets_view(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_replicasets_view(frame: &mut Frame, app: &mut App, area: Rect) {
     let block = Block::default()
         .borders(Borders::ALL)
         .title(" Replicasets ");
@@ -204,11 +208,15 @@ fn draw_replicasets_view(frame: &mut Frame, app: &App, area: Rect) {
         })
         .collect();
 
-    let list = List::new(items);
-    frame.render_widget(list, inner);
+    let list = List::new(items).highlight_style(
+        Style::default()
+            .bg(Color::DarkGray)
+            .add_modifier(Modifier::BOLD),
+    );
+    frame.render_stateful_widget(list, inner, &mut app.list_state);
 }
 
-fn draw_instances_view(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_instances_view(frame: &mut Frame, app: &mut App, area: Rect) {
     // Build title with sort indicator
     let sort_indicator = format!(
         " Sort: {} {} ",
@@ -344,8 +352,12 @@ fn draw_instances_view(frame: &mut Frame, app: &App, area: Rect) {
         })
         .collect();
 
-    let list = List::new(items);
-    frame.render_widget(list, inner);
+    let list = List::new(items).highlight_style(
+        Style::default()
+            .bg(Color::DarkGray)
+            .add_modifier(Modifier::BOLD),
+    );
+    frame.render_stateful_widget(list, inner, &mut app.list_state);
 }
 
 fn format_tier_line(app: &App, tier_idx: usize) -> Line<'static> {

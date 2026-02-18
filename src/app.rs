@@ -1,6 +1,7 @@
 use crate::api::{ApiRequest, ApiResponse};
 use crate::models::*;
 use crate::tokens;
+use ratatui::widgets::ListState;
 use std::collections::HashSet;
 use std::sync::mpsc::{Receiver, Sender};
 
@@ -147,6 +148,9 @@ pub struct App {
     // Filtering (instances view)
     pub filter_text: String,
     pub filter_active: bool,
+
+    // List state for scrolling
+    pub list_state: ListState,
 }
 
 impl App {
@@ -196,6 +200,7 @@ impl App {
             sort_order: SortOrder::default(),
             filter_text: String::new(),
             filter_active: false,
+            list_state: ListState::default().with_selected(Some(0)),
         }
     }
 
@@ -383,12 +388,20 @@ impl App {
         if !self.tree_items.is_empty() && self.selected_index >= self.tree_items.len() {
             self.selected_index = self.tree_items.len() - 1;
         }
+        self.list_state.select(Some(self.selected_index));
+    }
+
+    /// Reset selection to first item and sync list state
+    pub fn reset_selection(&mut self) {
+        self.selected_index = 0;
+        self.list_state.select(Some(0));
     }
 
     pub fn select_next(&mut self) {
         let count = self.get_item_count();
         if count > 0 {
             self.selected_index = (self.selected_index + 1) % count;
+            self.list_state.select(Some(self.selected_index));
         }
     }
 
@@ -400,7 +413,55 @@ impl App {
             } else {
                 self.selected_index - 1
             };
+            self.list_state.select(Some(self.selected_index));
         }
+    }
+
+    /// Jump to first item (gg in Vim)
+    pub fn select_first(&mut self) {
+        self.selected_index = 0;
+        self.list_state.select(Some(0));
+    }
+
+    /// Jump to last item (G in Vim)
+    pub fn select_last(&mut self) {
+        let count = self.get_item_count();
+        if count > 0 {
+            self.selected_index = count - 1;
+            self.list_state.select(Some(self.selected_index));
+        }
+    }
+
+    /// Move half page down (Ctrl+D in Vim)
+    pub fn select_half_page_down(&mut self, visible_height: usize) {
+        let count = self.get_item_count();
+        if count > 0 {
+            let half_page = visible_height / 2;
+            self.selected_index = (self.selected_index + half_page).min(count - 1);
+            self.list_state.select(Some(self.selected_index));
+        }
+    }
+
+    /// Move half page up (Ctrl+U in Vim)
+    pub fn select_half_page_up(&mut self, visible_height: usize) {
+        let half_page = visible_height / 2;
+        self.selected_index = self.selected_index.saturating_sub(half_page);
+        self.list_state.select(Some(self.selected_index));
+    }
+
+    /// Move full page down (Ctrl+F in Vim)
+    pub fn select_page_down(&mut self, visible_height: usize) {
+        let count = self.get_item_count();
+        if count > 0 {
+            self.selected_index = (self.selected_index + visible_height).min(count - 1);
+            self.list_state.select(Some(self.selected_index));
+        }
+    }
+
+    /// Move full page up (Ctrl+B in Vim)
+    pub fn select_page_up(&mut self, visible_height: usize) {
+        self.selected_index = self.selected_index.saturating_sub(visible_height);
+        self.list_state.select(Some(self.selected_index));
     }
 
     pub fn expand_selected(&mut self) {

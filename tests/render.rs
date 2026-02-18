@@ -38,9 +38,9 @@ fn test_terminal(width: u16, height: u16) -> Terminal<TestBackend> {
 #[test]
 fn test_tiers_view_renders_cluster_info() {
     let mut terminal = test_terminal(100, 30);
-    let app = test_app_with_data();
+    let mut app = test_app_with_data();
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -58,9 +58,9 @@ fn test_tiers_view_renders_cluster_info() {
 #[test]
 fn test_tiers_view_renders_tiers() {
     let mut terminal = test_terminal(100, 30);
-    let app = test_app_with_data();
+    let mut app = test_app_with_data();
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -78,9 +78,9 @@ fn test_tiers_view_renders_tiers() {
 #[test]
 fn test_tiers_view_shows_collapsed_arrows() {
     let mut terminal = test_terminal(100, 30);
-    let app = test_app_with_data();
+    let mut app = test_app_with_data();
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -97,7 +97,7 @@ fn test_tiers_view_expanded_shows_replicasets() {
     app.expanded_tiers.insert(0);
     app.rebuild_tree();
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -117,7 +117,7 @@ fn test_tiers_view_expanded_shows_instances() {
     app.expanded_replicasets.insert((0, 0));
     app.rebuild_tree();
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -135,7 +135,7 @@ fn test_replicasets_view_renders() {
 
     app.view_mode = ViewMode::Replicasets;
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -158,7 +158,7 @@ fn test_instances_view_renders() {
 
     app.view_mode = ViewMode::Instances;
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -192,7 +192,7 @@ fn test_instances_view_shows_sort_indicator() {
     app.sort_field = SortField::Name;
     app.sort_order = SortOrder::Asc;
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -210,7 +210,7 @@ fn test_instances_view_sort_descending() {
     app.view_mode = ViewMode::Instances;
     app.sort_order = SortOrder::Desc;
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -225,7 +225,7 @@ fn test_instances_view_filter_shows_indicator() {
     app.view_mode = ViewMode::Instances;
     app.filter_text = "dc1".to_string();
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -246,7 +246,7 @@ fn test_instances_view_filter_active_shows_cursor() {
     app.filter_active = true;
     app.filter_text = "test".to_string();
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -270,7 +270,7 @@ fn test_login_screen_renders() {
     app.input_mode = InputMode::Login;
     app.auth_enabled = true;
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -302,7 +302,7 @@ fn test_view_mode_indicator_in_header() {
         (ViewMode::Instances, "Instances"),
     ] {
         app.view_mode = mode;
-        terminal.draw(|f| ui::draw(f, &app)).unwrap();
+        terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
         let buffer = terminal.backend().buffer();
         assert!(
@@ -316,9 +316,9 @@ fn test_view_mode_indicator_in_header() {
 #[test]
 fn test_status_bar_shows_keybindings() {
     let mut terminal = test_terminal(120, 30);
-    let app = test_app_with_data();
+    let mut app = test_app_with_data();
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -341,7 +341,7 @@ fn test_instances_view_status_bar_shows_filter_key() {
 
     app.view_mode = ViewMode::Instances;
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -357,7 +357,7 @@ fn test_offline_instance_shown_differently() {
 
     app.view_mode = ViewMode::Instances;
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 
@@ -375,9 +375,9 @@ fn test_offline_instance_shown_differently() {
 #[test]
 fn test_memory_usage_displayed() {
     let mut terminal = test_terminal(100, 30);
-    let app = test_app_with_data();
+    let mut app = test_app_with_data();
 
-    terminal.draw(|f| ui::draw(f, &app)).unwrap();
+    terminal.draw(|f| ui::draw(f, &mut app)).unwrap();
 
     let buffer = terminal.backend().buffer();
 

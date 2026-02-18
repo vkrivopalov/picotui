@@ -1,0 +1,28 @@
+
+# Conventional Commits format: <type>(<scope>): <subject>
+# https://www.conventionalcommits.org/
+#
+# Types:
+#   feat:     A new feature
+#   fix:      A bug fix
+#   docs:     Documentation only changes
+#   style:    Formatting, missing semicolons, etc (no code change)
+#   refactor: Code change that neither fixes a bug nor adds a feature
+#   perf:     Code change that improves performance
+#   test:     Adding or correcting tests
+#   build:    Changes to build system or dependencies
+#   ci:       Changes to CI configuration files and scripts
+#   chore:    Other changes that don't modify src or test files
+#
+# Scope (optional): Component name (e.g., api, ui, app, models)
+#
+# Subject: Brief description in imperative mood ("add feature" not "added feature")
+#
+# Breaking changes:
+#   Add "BREAKING CHANGE:" in body/footer, or use "!" after type: feat!: ...
+#
+# Examples:
+#   feat(ui): add filter match highlighting
+#   fix(api): handle 401 errors during token refresh
+#   docs: update README with new keybindings
+#   chore(deps): update ratatui to 0.30

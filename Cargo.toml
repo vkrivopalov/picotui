@@ -14,7 +14,7 @@ categories = ["command-line-utilities"]
 [dependencies]
 # TUI
 ratatui = "0.30"
-crossterm = "0.28"
+crossterm = "0.29"
 
 # HTTP client (sync, lightweight)
 ureq = { version = "3", features = ["json"] }

@@ -30,7 +30,7 @@ anyhow = "1"
 pico-args = "0.5"
 
 # Cross-platform directories
-dirs = "5"
+dirs = "6"
 
 [dev-dependencies]
 # Mock HTTP server for integration tests

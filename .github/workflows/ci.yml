@@ -61,7 +61,7 @@ jobs:
         run: cargo test --all-features
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: picotui-linux-x86_64
           path: target/release/picotui
@@ -94,7 +94,7 @@ jobs:
             cp target/release/picotui /tmp/picotui-freebsd
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: picotui-freebsd-x86_64
           path: target/release/picotui
@@ -117,7 +117,7 @@ jobs:
         run: cargo test --all-features
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: picotui-macos-x86_64
           path: target/release/picotui
@@ -139,7 +139,7 @@ jobs:
         run: cargo test --all-features
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: picotui-windows-x86_64
           path: target/release/picotui.exe

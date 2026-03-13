@@ -1,7 +1,7 @@
 use super::cluster_header::draw_cluster_header;
 use super::{centered_rect, format_bytes};
 use crate::app::{App, TreeItem, ViewMode};
-use crate::models::{InstanceInfo, ReplicasetInfo, StateVariant};
+use crate::models::{HealthStatusLevel, InstanceInfo, ReplicasetInfo, StateVariant};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -80,6 +80,11 @@ pub fn draw_nodes(frame: &mut Frame, app: &mut App, area: Rect) {
         if let Some(instance) = app.get_selected_instance() {
             draw_instance_detail(frame, instance, frame.area());
         }
+    }
+
+    // Draw health status popup if active
+    if app.show_health {
+        draw_health_status(frame, app, frame.area());
     }
 }
 
@@ -606,4 +611,240 @@ fn draw_instance_detail(frame: &mut Frame, instance: &InstanceInfo, area: Rect) 
 
     let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
     frame.render_widget(paragraph, inner);
+}
+
+fn draw_health_status(frame: &mut Frame, app: &App, area: Rect) {
+    let popup_area = centered_rect(70, 80, area);
+
+    frame.render_widget(Clear, popup_area);
+
+    let title = if app.health_loading {
+        " Health Status (loading...) "
+    } else if app.health_error.is_some() {
+        " Health Status (error) "
+    } else {
+        " Health Status "
+    };
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(title)
+        .style(Style::default().bg(Color::Black));
+
+    let inner = block.inner(popup_area);
+    frame.render_widget(block, popup_area);
+
+    let mut lines = Vec::new();
+
+    if app.health_loading {
+        lines.push(Line::from("Loading health status..."));
+    } else if let Some(ref error) = app.health_error {
+        lines.push(Line::from(vec![
+            Span::styled("Error: ", Style::default().fg(Color::Red)),
+            Span::raw(error.clone()),
+        ]));
+    } else if let Some(ref status) = app.health_status {
+        // Status indicator with color
+        let (status_symbol, status_color) = match status.status {
+            HealthStatusLevel::Healthy => ("●", Color::Green),
+            HealthStatusLevel::Degraded => ("●", Color::Yellow),
+            HealthStatusLevel::Unhealthy => ("●", Color::Red),
+        };
+
+        lines.push(Line::from(vec![
+            Span::styled("Status:       ", Style::default().fg(Color::Gray)),
+            Span::styled(
+                format!("{} {}", status_symbol, status.status),
+                Style::default().fg(status_color),
+            ),
+        ]));
+
+        // Show reasons if not healthy
+        if !status.reasons.is_empty() {
+            for reason in &status.reasons {
+                lines.push(Line::from(vec![
+                    Span::styled("              ", Style::default()),
+                    Span::styled(format!("- {}", reason), Style::default().fg(status_color)),
+                ]));
+            }
+        }
+
+        lines.push(Line::from(vec![
+            Span::styled("Uptime:       ", Style::default().fg(Color::Gray)),
+            Span::styled(format_uptime(status.uptime_seconds), Style::default()),
+        ]));
+
+        lines.push(Line::from(""));
+        lines.push(Line::from(vec![Span::styled(
+            "─── Instance ───",
+            Style::default().fg(Color::Yellow),
+        )]));
+
+        lines.push(Line::from(vec![
+            Span::styled("Name:         ", Style::default().fg(Color::Gray)),
+            Span::styled(status.name.clone(), Style::default().fg(Color::White)),
+        ]));
+
+        lines.push(Line::from(vec![
+            Span::styled("Version:      ", Style::default().fg(Color::Gray)),
+            Span::styled(status.version.clone(), Style::default().fg(Color::Cyan)),
+        ]));
+
+        lines.push(Line::from(vec![
+            Span::styled("Tier:         ", Style::default().fg(Color::Gray)),
+            Span::raw(status.tier.clone()),
+        ]));
+
+        lines.push(Line::from(vec![
+            Span::styled("Replicaset:   ", Style::default().fg(Color::Gray)),
+            Span::raw(status.replicaset.clone()),
+        ]));
+
+        lines.push(Line::from(vec![
+            Span::styled("State:        ", Style::default().fg(Color::Gray)),
+            Span::raw(format!(
+                "{} → {}",
+                status.current_state, status.target_state
+            )),
+        ]));
+
+        if let Some(ref reason) = status.target_state_reason {
+            lines.push(Line::from(vec![
+                Span::styled("              ", Style::default()),
+                Span::styled(
+                    format!("({})", reason),
+                    Style::default().fg(Color::DarkGray),
+                ),
+            ]));
+        }
+
+        lines.push(Line::from(""));
+        lines.push(Line::from(vec![Span::styled(
+            "─── Raft ───",
+            Style::default().fg(Color::Yellow),
+        )]));
+
+        lines.push(Line::from(vec![
+            Span::styled("State:        ", Style::default().fg(Color::Gray)),
+            Span::styled(status.raft.state.clone(), Style::default().fg(Color::Cyan)),
+        ]));
+
+        lines.push(Line::from(vec![
+            Span::styled("Term:         ", Style::default().fg(Color::Gray)),
+            Span::raw(status.raft.term.to_string()),
+        ]));
+
+        let leader_info = if status.raft.leader_id == 0 {
+            "unknown".to_string()
+        } else if status.raft.leader_name.is_empty() {
+            format!("raft_id: {}", status.raft.leader_id)
+        } else {
+            format!(
+                "{} (raft_id: {})",
+                status.raft.leader_name, status.raft.leader_id
+            )
+        };
+        lines.push(Line::from(vec![
+            Span::styled("Leader:       ", Style::default().fg(Color::Gray)),
+            Span::raw(leader_info),
+        ]));
+
+        lines.push(Line::from(vec![
+            Span::styled("Applied:      ", Style::default().fg(Color::Gray)),
+            Span::raw(format!(
+                "{} / Committed: {}",
+                status.raft.applied_index, status.raft.committed_index
+            )),
+        ]));
+
+        lines.push(Line::from(vec![
+            Span::styled("Persisted:    ", Style::default().fg(Color::Gray)),
+            Span::raw(format!(
+                "{} / Compacted: {}",
+                status.raft.persisted_index, status.raft.compacted_index
+            )),
+        ]));
+
+        if status.limbo_owner != 0 {
+            lines.push(Line::from(vec![
+                Span::styled("Limbo Owner:  ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!("raft_id: {}", status.limbo_owner),
+                    Style::default().fg(Color::Yellow),
+                ),
+            ]));
+        }
+
+        lines.push(Line::from(""));
+        lines.push(Line::from(vec![Span::styled(
+            "─── Buckets ───",
+            Style::default().fg(Color::Yellow),
+        )]));
+
+        lines.push(Line::from(vec![
+            Span::styled("Active:       ", Style::default().fg(Color::Gray)),
+            Span::raw(format!(
+                "{} / {}",
+                status.buckets.active, status.buckets.total
+            )),
+        ]));
+
+        if status.buckets.sending > 0 || status.buckets.receiving > 0 {
+            lines.push(Line::from(vec![
+                Span::styled("Resharding:   ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!(
+                        "sending: {}, receiving: {}",
+                        status.buckets.sending, status.buckets.receiving
+                    ),
+                    Style::default().fg(Color::Yellow),
+                ),
+            ]));
+        }
+
+        if status.buckets.garbage > 0 {
+            lines.push(Line::from(vec![
+                Span::styled("Garbage:      ", Style::default().fg(Color::Gray)),
+                Span::raw(status.buckets.garbage.to_string()),
+            ]));
+        }
+
+        lines.push(Line::from(""));
+        lines.push(Line::from(vec![Span::styled(
+            "─── Cluster ───",
+            Style::default().fg(Color::Yellow),
+        )]));
+
+        lines.push(Line::from(vec![
+            Span::styled("Version:      ", Style::default().fg(Color::Gray)),
+            Span::raw(status.cluster.version.clone()),
+        ]));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![Span::styled(
+        "Press Esc to close, r to refresh",
+        Style::default().fg(Color::DarkGray),
+    )]));
+
+    let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
+    frame.render_widget(paragraph, inner);
+}
+
+/// Format seconds as human-readable uptime (e.g., "3d 14h 22m")
+fn format_uptime(seconds: u64) -> String {
+    let days = seconds / 86400;
+    let hours = (seconds % 86400) / 3600;
+    let minutes = (seconds % 3600) / 60;
+    let secs = seconds % 60;
+
+    if days > 0 {
+        format!("{}d {}h {}m", days, hours, minutes)
+    } else if hours > 0 {
+        format!("{}h {}m {}s", hours, minutes, secs)
+    } else if minutes > 0 {
+        format!("{}m {}s", minutes, secs)
+    } else {
+        format!("{}s", secs)
+    }
 }

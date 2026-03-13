@@ -95,6 +95,7 @@ picotui --url http://localhost:8080 --debug
 | `Ctrl+F` / `PageDown` | Full page down |
 | `Ctrl+B` / `PageUp` | Full page up |
 | `Enter` | Show instance details |
+| `H` | Show instance health status (requires HTTP address) |
 
 ### View Modes
 | Key | Action |

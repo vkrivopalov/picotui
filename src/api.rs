@@ -19,6 +19,9 @@ pub enum ApiRequest {
     },
     GetClusterInfo,
     GetTiers,
+    GetHealthStatus {
+        http_address: String,
+    },
     Shutdown,
 }
 
@@ -29,6 +32,7 @@ pub enum ApiResponse {
     Login(Result<TokenResponse, String>),
     ClusterInfo(Result<ClusterInfo, String>),
     Tiers(Result<Vec<TierInfo>, String>),
+    HealthStatus(Result<Box<HealthStatus>, String>),
 }
 
 /// Spawns a background thread that handles all HTTP requests
@@ -210,6 +214,39 @@ pub fn spawn_api_worker(
                         }
                     };
                     let _ = response_tx.send(ApiResponse::Tiers(response));
+                }
+
+                ApiRequest::GetHealthStatus { http_address } => {
+                    // Health status is fetched directly from the instance's HTTP address
+                    let url = format!("http://{}/api/v1/health/status", http_address);
+                    log_debug(debug, &format!("GET {}", url));
+
+                    let mut req = client.get(&url);
+                    if let Some(ref token) = auth_token {
+                        req = req.header("Authorization", &format!("Bearer {}", token));
+                    }
+
+                    let result = req.call();
+                    let response = match result {
+                        Ok(resp) => match resp.into_body().read_json::<HealthStatus>() {
+                            Ok(status) => {
+                                log_debug(
+                                    debug,
+                                    &format!("  OK: health status {:?}", status.status),
+                                );
+                                Ok(Box::new(status))
+                            }
+                            Err(e) => {
+                                log_debug(debug, &format!("  PARSE ERROR: {}", e));
+                                Err(format!("Failed to parse health status: {}", e))
+                            }
+                        },
+                        Err(e) => {
+                            log_debug(debug, &format!("  ERROR: {}", e));
+                            Err(format!("Failed to get health status: {}", e))
+                        }
+                    };
+                    let _ = response_tx.send(ApiResponse::HealthStatus(response));
                 }
             }
         }

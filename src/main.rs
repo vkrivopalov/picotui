@@ -140,7 +140,9 @@ fn run_app(
                 match app.input_mode {
                     InputMode::Login => handle_login_input(app, key.code, key.modifiers),
                     InputMode::Normal => {
-                        if app.show_detail {
+                        if app.show_health {
+                            handle_health_input(app, key.code);
+                        } else if app.show_detail {
                             handle_detail_input(app, key.code);
                         } else {
                             handle_normal_input(app, key.code, key.modifiers);
@@ -236,6 +238,24 @@ fn handle_detail_input(app: &mut App, key: KeyCode) {
 
 // Default visible height for page navigation (will be overridden by actual terminal size)
 const DEFAULT_PAGE_HEIGHT: usize = 20;
+
+fn handle_health_input(app: &mut App, key: KeyCode) {
+    match key {
+        KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') => {
+            app.show_health = false;
+            app.health_status = None;
+            app.health_error = None;
+        }
+        KeyCode::Char('r') => {
+            // Refresh health status
+            if !app.health_loading {
+                app.show_health = false; // Close temporarily
+                app.request_health_status();
+            }
+        }
+        _ => {}
+    }
+}
 
 fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
     // Handle filter input mode
@@ -376,6 +396,12 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
             // Start filter mode (only in instances view)
             if app.view_mode == ViewMode::Instances {
                 app.filter_active = true;
+            }
+        }
+        KeyCode::Char('H') => {
+            // Show health status for selected instance
+            if app.get_selected_instance().is_some() {
+                app.request_health_status();
             }
         }
         _ => {}

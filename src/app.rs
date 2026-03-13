@@ -138,6 +138,12 @@ pub struct App {
     // Detail popup
     pub show_detail: bool,
 
+    // Health status popup
+    pub show_health: bool,
+    pub health_status: Option<HealthStatus>,
+    pub health_loading: bool,
+    pub health_error: Option<String>,
+
     // View mode
     pub view_mode: ViewMode,
 
@@ -195,6 +201,10 @@ impl App {
             tree_items: Vec::new(),
             selected_index: 0,
             show_detail: false,
+            show_health: false,
+            health_status: None,
+            health_loading: false,
+            health_error: None,
             view_mode: ViewMode::default(),
             sort_field: SortField::default(),
             sort_order: SortOrder::default(),
@@ -228,6 +238,27 @@ impl App {
             password: self.login_password.clone(),
             remember_me: self.login_remember_me,
         });
+    }
+
+    /// Request health status for the selected instance
+    pub fn request_health_status(&mut self) {
+        // Extract http_address first to avoid borrow issues
+        let http_address = self.get_selected_instance().map(|i| i.http_address.clone());
+
+        if let Some(addr) = http_address {
+            if addr.is_empty() {
+                self.health_error = Some("Instance has no HTTP address".to_string());
+                self.show_health = true;
+                return;
+            }
+            self.health_loading = true;
+            self.health_status = None;
+            self.health_error = None;
+            self.show_health = true;
+            let _ = self
+                .request_tx
+                .send(ApiRequest::GetHealthStatus { http_address: addr });
+        }
     }
 
     /// Logout, clear saved tokens, and exit
@@ -353,6 +384,19 @@ impl App {
                 }
                 // Mark loading complete - error will be shown in status bar
                 self.loading = false;
+            }
+
+            ApiResponse::HealthStatus(result) => {
+                self.health_loading = false;
+                match result {
+                    Ok(status) => {
+                        self.health_status = Some(*status);
+                        self.health_error = None;
+                    }
+                    Err(e) => {
+                        self.health_error = Some(e);
+                    }
+                }
             }
         }
     }

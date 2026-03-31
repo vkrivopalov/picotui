@@ -1,6 +1,6 @@
 [package]
 name = "picotui"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Vladimir Krivopalov <argenet@yandex.ru>"]
 description = "Terminal UI for Picodata cluster management"

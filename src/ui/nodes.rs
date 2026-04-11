@@ -1,7 +1,9 @@
 use super::cluster_header::draw_cluster_header;
 use super::{centered_rect, format_bytes};
 use crate::app::{App, TreeItem, ViewMode};
-use crate::models::{HealthStatusLevel, InstanceInfo, ReplicasetInfo, StateVariant};
+use crate::models::{
+    HealthStatusLevel, InstanceInfo, ReplicasetInfo, ReplicasetState, StateVariant,
+};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -179,6 +181,16 @@ fn draw_replicasets_view(frame: &mut Frame, app: &mut App, area: Rect) {
                 StateVariant::Expelled => Style::default().fg(Color::DarkGray),
             };
 
+            // Replicaset state indicator (Picodata 26.2+)
+            let rs_state_style = match rs.replicaset_state {
+                ReplicasetState::Ready => Style::default().fg(Color::Green),
+                ReplicasetState::NotReady => Style::default().fg(Color::Yellow),
+            };
+            let rs_state_marker = match rs.replicaset_state {
+                ReplicasetState::Ready => "✓",
+                ReplicasetState::NotReady => "?",
+            };
+
             let mem_str = format!(
                 "{}/{}",
                 format_bytes(rs.memory.used),
@@ -189,7 +201,9 @@ fn draw_replicasets_view(frame: &mut Frame, app: &mut App, area: Rect) {
                 Span::styled(rs.name.clone(), Style::default().fg(Color::White)),
                 Span::raw(" ["),
                 Span::styled(rs.state.to_string(), state_style),
-                Span::raw("]  "),
+                Span::raw("] "),
+                Span::styled(rs_state_marker.to_string(), rs_state_style),
+                Span::raw("  "),
                 Span::styled("Tier:", Style::default().fg(Color::Gray)),
                 Span::styled(
                     format!(" {}  ", tier_name),
@@ -291,7 +305,16 @@ fn draw_instances_view(frame: &mut Frame, app: &mut App, area: Rect) {
                 StateVariant::Expelled => Style::default().fg(Color::DarkGray),
             };
 
-            let leader_marker = if inst.is_leader { "★ " } else { "  " };
+            let leader_marker = if inst.is_leader { "★" } else { " " };
+
+            // Raft role indicator (only shown for Picodata 26.2+)
+            let raft_marker = if inst.is_raft_leader {
+                "⚡"
+            } else if inst.is_voter {
+                "V"
+            } else {
+                " "
+            };
 
             let failure_domain_str = if inst.failure_domain.is_empty() {
                 String::new()
@@ -304,10 +327,11 @@ fn draw_instances_view(frame: &mut Frame, app: &mut App, area: Rect) {
             };
 
             // Build line with highlighted matches
-            let mut spans = vec![Span::styled(
-                leader_marker,
-                Style::default().fg(Color::Yellow),
-            )];
+            let mut spans = vec![
+                Span::styled(leader_marker, Style::default().fg(Color::Yellow)),
+                Span::styled(raft_marker, Style::default().fg(Color::Magenta)),
+                Span::raw(" "),
+            ];
 
             // Instance name (with highlighting)
             spans.extend(highlight_match(
@@ -412,6 +436,16 @@ fn format_replicaset_line(app: &App, tier_idx: usize, rs_idx: usize) -> Line<'st
         StateVariant::Expelled => Style::default().fg(Color::DarkGray),
     };
 
+    // Replicaset state indicator (Picodata 26.2+)
+    let rs_state_style = match rs.replicaset_state {
+        ReplicasetState::Ready => Style::default().fg(Color::Green),
+        ReplicasetState::NotReady => Style::default().fg(Color::Yellow),
+    };
+    let rs_state_marker = match rs.replicaset_state {
+        ReplicasetState::Ready => "✓",
+        ReplicasetState::NotReady => "?",
+    };
+
     let mem_str = format!(
         "{}/{}",
         format_bytes(rs.memory.used),
@@ -425,7 +459,9 @@ fn format_replicaset_line(app: &App, tier_idx: usize, rs_idx: usize) -> Line<'st
         Span::styled(rs.name.clone(), Style::default().fg(Color::White)),
         Span::raw(" ["),
         Span::styled(rs.state.to_string(), state_style),
-        Span::raw("]  "),
+        Span::raw("] "),
+        Span::styled(rs_state_marker.to_string(), rs_state_style),
+        Span::raw("  "),
         Span::styled("Inst:", Style::default().fg(Color::Gray)),
         Span::raw(format!(" {}  ", rs.instance_count)),
         Span::styled("Mem:", Style::default().fg(Color::Gray)),
@@ -456,10 +492,20 @@ fn format_instance_line(
         StateVariant::Expelled => Style::default().fg(Color::DarkGray),
     };
 
+    // Leader markers: ★ = vshard leader, ⚡ = raft leader, V = voter
     let leader_marker = if inst.is_leader {
         " ★".to_string()
     } else {
         "  ".to_string()
+    };
+
+    // Raft role indicator (only shown for Picodata 26.2+)
+    let raft_marker = if inst.is_raft_leader {
+        "⚡"
+    } else if inst.is_voter {
+        "V"
+    } else {
+        " "
     };
 
     let pg_span = if !inst.pg_address.is_empty() {
@@ -474,6 +520,7 @@ fn format_instance_line(
     Line::from(vec![
         Span::raw(prefix),
         Span::styled(leader_marker, Style::default().fg(Color::Yellow)),
+        Span::styled(raft_marker.to_string(), Style::default().fg(Color::Magenta)),
         Span::raw(" "),
         Span::styled(inst.name.clone(), Style::default().fg(Color::White)),
         Span::raw(" ["),
@@ -541,6 +588,32 @@ fn draw_instance_detail(frame: &mut Frame, instance: &InstanceInfo, area: Rect) 
                 },
                 Style::default().fg(if instance.is_leader {
                     Color::Yellow
+                } else {
+                    Color::White
+                }),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Is Voter:      ", Style::default().fg(Color::Gray)),
+            Span::styled(
+                if instance.is_voter { "Yes" } else { "No" },
+                Style::default().fg(if instance.is_voter {
+                    Color::Magenta
+                } else {
+                    Color::White
+                }),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Is Raft Leader:", Style::default().fg(Color::Gray)),
+            Span::styled(
+                if instance.is_raft_leader {
+                    " Yes ⚡".to_string()
+                } else {
+                    " No".to_string()
+                },
+                Style::default().fg(if instance.is_raft_leader {
+                    Color::Magenta
                 } else {
                     Color::White
                 }),

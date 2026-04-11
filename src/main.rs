@@ -188,17 +188,9 @@ fn handle_login_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
             };
         }
         KeyCode::Enter => {
-            match app.login_focus {
-                LoginFocus::RememberMe => {
-                    // Toggle checkbox
-                    app.login_remember_me = !app.login_remember_me;
-                }
-                _ => {
-                    // Submit login
-                    if !app.login_username.is_empty() && !app.loading {
-                        app.request_login();
-                    }
-                }
+            // Always submit login on Enter, regardless of focused field
+            if !app.login_username.is_empty() && !app.loading {
+                app.request_login();
             }
         }
         KeyCode::Char(' ') if app.login_focus == LoginFocus::RememberMe => {

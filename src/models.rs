@@ -38,7 +38,12 @@ pub struct TierInfo {
 pub struct ReplicasetInfo {
     #[allow(dead_code)]
     pub version: String,
+    /// State of the replicaset's leader instance (kept for backward compatibility).
     pub state: StateVariant,
+    /// Actual replicaset state from _pico_replicaset (Picodata 26.2+).
+    /// Defaults to Ready when missing (older Picodata versions).
+    #[serde(default)]
+    pub replicaset_state: ReplicasetState,
     pub instance_count: usize,
     #[allow(dead_code)]
     pub uuid: String,
@@ -54,7 +59,16 @@ pub struct InstanceInfo {
     pub http_address: String,
     pub version: String,
     pub failure_domain: HashMap<String, String>,
+    /// Whether this instance is the vshard leader of its replicaset.
     pub is_leader: bool,
+    /// Whether this instance is a Raft voter (Picodata 26.2+).
+    /// Defaults to false when missing (older Picodata versions).
+    #[serde(default)]
+    pub is_voter: bool,
+    /// Whether this instance is the Raft leader (Picodata 26.2+).
+    /// Defaults to false when missing (older Picodata versions).
+    #[serde(default)]
+    pub is_raft_leader: bool,
     pub current_state: StateVariant,
     pub target_state: StateVariant,
     pub name: String,
@@ -67,6 +81,26 @@ pub enum StateVariant {
     Online,
     Offline,
     Expelled,
+}
+
+/// Replicaset state from _pico_replicaset system table.
+/// Note: This is different from the `state` field in ReplicasetInfo,
+/// which represents the leader instance's state (kept for backward compatibility).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum ReplicasetState {
+    #[default]
+    Ready,
+    NotReady,
+}
+
+impl std::fmt::Display for ReplicasetState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReplicasetState::Ready => write!(f, "Ready"),
+            ReplicasetState::NotReady => write!(f, "Not Ready"),
+        }
+    }
 }
 
 impl std::fmt::Display for StateVariant {

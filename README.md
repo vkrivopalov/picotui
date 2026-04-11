@@ -23,11 +23,15 @@ Picotui follows [SemVer](https://semver.org/). Each release specifies the Picoda
 
 Current version **0.2.0** is compatible with **Picodata 26.1**.
 
+Raft voter/leader indicators and replicaset state require **Picodata 26.2+**.
+
 ## Features
 
 - **Cluster Overview**: View cluster name, version, memory usage, and instance counts
 - **Multiple View Modes**: Switch between Tiers (tree), Replicasets (flat), and Instances (flat) views
 - **Hierarchical Tree View**: Navigate tiers → replicasets → instances with expand/collapse
+- **Raft Status Indicators**: See which instance is the Raft leader and which are voters (Picodata 26.2+)
+- **Replicaset State**: View actual replicaset state (ready/not-ready) from cluster metadata (Picodata 26.2+)
 - **Sorting**: Sort instances by name or failure domain, ascending or descending
 - **Filtering**: Filter instances by name, tier, replicaset, address, or failure domain
 - **Instance Details**: View detailed information including addresses, failure domains, and state
@@ -151,16 +155,22 @@ picotui --url http://localhost:8080 --debug
 │ Memory: 1.2 GiB / 4.0 GiB (30.0%) ████████░░░░░░░░░░░░░░░░░░░░░░░  │
 ├─────────────────────────────────────────────────────────────────────┤
 │ ▼ default  RS: 2  Inst: 6  RF: 3  Buckets: 3000  Vote: ✓           │
-│   ├─▼ r1 [Online]  Inst: 3  Mem: 600 MiB/2 GiB (30.0%)             │
-│   │  ├─ ★ i1 [Online]  10.0.0.1:3301  pg:10.0.0.1:5432             │
-│   │  ├─   i2 [Online]  10.0.0.2:3301  pg:10.0.0.2:5432             │
-│   │  └─   i3 [Offline] 10.0.0.3:3301  pg:10.0.0.3:5432             │
-│   └─▶ r2 [Online]  Inst: 3  Mem: 600 MiB/2 GiB (30.0%)             │
+│   ├─▼ r1 [Online] ✓  Inst: 3  Mem: 600 MiB/2 GiB (30.0%)           │
+│   │  ├─ ★⚡ i1 [Online]  10.0.0.1:3301  pg:10.0.0.1:5432            │
+│   │  ├─  V i2 [Online]  10.0.0.2:3301  pg:10.0.0.2:5432             │
+│   │  └─    i3 [Offline] 10.0.0.3:3301  pg:10.0.0.3:5432             │
+│   └─▶ r2 [Online] ✓  Inst: 3  Mem: 600 MiB/2 GiB (30.0%)           │
 │ ▶ storage  RS: 1  Inst: 3  RF: 3  Buckets: 0  Vote: ✗              │
 ├─────────────────────────────────────────────────────────────────────┤
 │ ↑↓/jk Navigate  ←→/hl Collapse/Expand  Enter Details  g View  ...  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+**Legend** (Picodata 26.2+):
+- `★` — vshard leader (replicaset master)
+- `⚡` — Raft leader (cluster-wide)
+- `V` — Raft voter
+- `✓` / `?` — replicaset ready / not-ready
 
 ### Instances View (flat list with sorting/filtering)
 ```
@@ -168,9 +178,9 @@ picotui --url http://localhost:8080 --debug
 ├─────────────────────────────────────────────────────────────────────┤
 │ Cluster: my-cluster │ ...                                          │
 ├─ Instances  Filter: "dc1" ──────────────────────── Sort: Name ↑ ───┤
-│ ★ i1 [Online]  RS: r1  10.0.0.1:3301  datacenter:dc1               │
-│   i2 [Online]  RS: r1  10.0.0.2:3301  datacenter:dc1               │
-│   i4 [Online]  RS: r2  10.0.0.4:3301  datacenter:dc1               │
+│ ★⚡ i1 [Online]  RS: r1  10.0.0.1:3301  datacenter:dc1              │
+│  V i2 [Online]  RS: r1  10.0.0.2:3301  datacenter:dc1               │
+│    i4 [Online]  RS: r2  10.0.0.4:3301  datacenter:dc1               │
 ├─────────────────────────────────────────────────────────────────────┤
 │ ↑↓/jk Navigate  Enter Details  g View  s Sort  S Order  / Filter   │
 └─────────────────────────────────────────────────────────────────────┘
@@ -192,7 +202,8 @@ Use `→`/`l` to expand and `←`/`h` to collapse nodes. The tree shows memory u
 ### Replicasets View
 
 Flat list of all replicasets across all tiers. Each row shows:
-- Replicaset name and state (Online/Offline/Expelled)
+- Replicaset name and leader instance state (Online/Offline/Expelled)
+- Replicaset state indicator: `✓` (ready) or `?` (not-ready) — Picodata 26.2+
 - Parent tier name
 - Instance count
 - Memory usage and capacity percentage
@@ -200,7 +211,10 @@ Flat list of all replicasets across all tiers. Each row shows:
 ### Instances View
 
 Flat list of all instances with sorting and filtering capabilities:
-- Instance name with leader indicator (★)
+- Instance name with role indicators:
+  - `★` — vshard leader (replicaset master)
+  - `⚡` — Raft leader (Picodata 26.2+)
+  - `V` — Raft voter (Picodata 26.2+)
 - Current state
 - Parent replicaset
 - Binary address

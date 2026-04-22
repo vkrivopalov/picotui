@@ -187,12 +187,11 @@ fn handle_login_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
                 LoginFocus::RememberMe => LoginFocus::Password,
             };
         }
-        KeyCode::Enter => {
+        KeyCode::Enter
             // Always submit login on Enter, regardless of focused field
-            if !app.login_username.is_empty() && !app.loading {
+            if !app.login_username.is_empty() && !app.loading => {
                 app.request_login();
             }
-        }
         KeyCode::Char(' ') if app.login_focus == LoginFocus::RememberMe => {
             // Space toggles checkbox
             app.login_remember_me = !app.login_remember_me;
@@ -238,13 +237,12 @@ fn handle_health_input(app: &mut App, key: KeyCode) {
             app.health_status = None;
             app.health_error = None;
         }
-        KeyCode::Char('r') => {
+        KeyCode::Char('r')
             // Refresh health status
-            if !app.health_loading {
+            if !app.health_loading => {
                 app.show_health = false; // Close temporarily
                 app.request_health_status();
             }
-        }
         _ => {}
     }
 }
@@ -331,17 +329,15 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
         KeyCode::Enter => {
             app.toggle_detail();
         }
-        KeyCode::Char('r') => {
-            if !app.loading {
+        KeyCode::Char('r')
+            if !app.loading => {
                 app.request_refresh();
             }
-        }
-        KeyCode::Char('X') => {
+        KeyCode::Char('X')
             // Logout (capital X to avoid accidental logout)
-            if app.auth_enabled {
+            if app.auth_enabled => {
                 app.logout();
             }
-        }
         // View modes
         KeyCode::Char('g') => {
             // Cycle view mode and clear filter
@@ -369,33 +365,29 @@ fn handle_normal_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
             app.reset_selection();
         }
         // Sorting
-        KeyCode::Char('s') => {
+        KeyCode::Char('s')
             // Cycle sort field (only in instances view)
-            if app.view_mode == ViewMode::Instances {
+            if app.view_mode == ViewMode::Instances => {
                 app.sort_field = app.sort_field.cycle_next();
                 app.reset_selection();
             }
-        }
-        KeyCode::Char('S') => {
+        KeyCode::Char('S')
             // Toggle sort order (only in instances view)
-            if app.view_mode == ViewMode::Instances {
+            if app.view_mode == ViewMode::Instances => {
                 app.sort_order = app.sort_order.toggle();
                 app.reset_selection();
             }
-        }
         // Filtering
-        KeyCode::Char('/') => {
+        KeyCode::Char('/')
             // Start filter mode (only in instances view)
-            if app.view_mode == ViewMode::Instances {
+            if app.view_mode == ViewMode::Instances => {
                 app.filter_active = true;
             }
-        }
-        KeyCode::Char('H') => {
+        KeyCode::Char('H')
             // Show health status for selected instance
-            if app.get_selected_instance().is_some() {
+            if app.get_selected_instance().is_some() => {
                 app.request_health_status();
             }
-        }
         _ => {}
     }
 }

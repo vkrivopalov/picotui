@@ -721,7 +721,7 @@ fn draw_health_status(frame: &mut Frame, app: &App, area: Rect) {
         let (status_symbol, status_color) = match status.status {
             HealthStatusLevel::Healthy => ("●", Color::Green),
             HealthStatusLevel::Degraded => ("●", Color::Yellow),
-            HealthStatusLevel::Unhealthy => ("●", Color::Red),
+            HealthStatusLevel::Broken => ("●", Color::Red),
         };
 
         lines.push(Line::from(vec![
@@ -732,12 +732,12 @@ fn draw_health_status(frame: &mut Frame, app: &App, area: Rect) {
             ),
         ]));
 
-        // Show reasons if not healthy
-        if !status.reasons.is_empty() {
-            for reason in &status.reasons {
+        // Show issues if not healthy
+        if !status.issues.is_empty() {
+            for issue in &status.issues {
                 lines.push(Line::from(vec![
                     Span::styled("              ", Style::default()),
-                    Span::styled(format!("- {}", reason), Style::default().fg(status_color)),
+                    Span::styled(format!("- {}", issue), Style::default().fg(status_color)),
                 ]));
             }
         }

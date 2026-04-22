@@ -154,7 +154,8 @@ pub struct ErrorResponse {
 pub enum HealthStatusLevel {
     Healthy,
     Degraded,
-    Unhealthy,
+    #[serde(alias = "unhealthy")]
+    Broken,
 }
 
 impl std::fmt::Display for HealthStatusLevel {
@@ -162,7 +163,7 @@ impl std::fmt::Display for HealthStatusLevel {
         match self {
             HealthStatusLevel::Healthy => write!(f, "Healthy"),
             HealthStatusLevel::Degraded => write!(f, "Degraded"),
-            HealthStatusLevel::Unhealthy => write!(f, "Unhealthy"),
+            HealthStatusLevel::Broken => write!(f, "Broken"),
         }
     }
 }
@@ -171,8 +172,8 @@ impl std::fmt::Display for HealthStatusLevel {
 #[serde(rename_all = "camelCase")]
 pub struct HealthStatus {
     pub status: HealthStatusLevel,
-    #[serde(default)]
-    pub reasons: Vec<String>,
+    #[serde(default, alias = "reasons")]
+    pub issues: Vec<String>,
     pub uptime_seconds: u64,
     pub name: String,
     #[allow(dead_code)]
